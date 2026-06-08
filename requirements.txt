@@ -1,0 +1,11 @@
+streamlit>=1.30.0
+pinecone>=3.0.0
+groq>=0.4.0
+sentence-transformers>=2.2.2
+pymupdf>=1.23.0
+python-dotenv>=1.0.0
+pdfplumber>=0.10.0
+easyocr
+rank-bm25
+python-docx
+supabase>=2.3.0

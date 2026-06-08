@@ -1,0 +1,8 @@
+.env
+__pycache__/
+venv/
+.venv/
+data/temp_uploads/
+*.db
+*.sqlite3
+.DS_Store
