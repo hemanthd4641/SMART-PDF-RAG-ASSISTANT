@@ -83,9 +83,9 @@ flowchart TD
     subgraph GenerationFlow ["🛡️ 4. Generation & Evidence Gate Flow"]
         FinalCandidates --> EvidenceGate{Evidence Gate\nCheck Similarity / Logit Thresholds\nservices/evidence_gate.py}
         
-        EvidenceGate -->|Score < Threshold OR Empty Chunks| ControlledRefusal[🔴 Evidence: Insufficient\nControlled Refusal: No Hallucination]
+        EvidenceGate -->|Score < Threshold OR Empty Chunks| ControlledRefusal["🔴 Evidence: Insufficient\nControlled Refusal: No Hallucination"]
         
-        EvidenceGate -->|Score >= Threshold| ContextAssembly[Context Block Assembly\n[Context Block N | Doc, Page]\nservices/llm.py]
+        EvidenceGate -->|Score >= Threshold| ContextAssembly["Context Block Assembly\n[Context Block N | Doc, Page]\nservices/llm.py"]
         
         ContextAssembly --> MemoryInject[Inject Last 6 Conversation Turns\nservices/llm.py]
         
@@ -106,7 +106,7 @@ flowchart TD
     CitationAppender -->|Persist chat turn| ChatHistoryStore
     CitationAppender --> UI
     
-    UI -->|Click Cited Page in Source Preview| HighlightViewer[Inspector: Source Preview\nReconstruct Page + Yellow Highlighting mark\ncomponents/sidebar.py]
+    UI -->|Click Cited Page in Source Preview| HighlightViewer["Inspector: Source Preview\nReconstruct Page + Yellow Highlighting\ncomponents/sidebar.py"]
     DB_Chunks -.->|Fetch full page chunks| HighlightViewer
 ```
 

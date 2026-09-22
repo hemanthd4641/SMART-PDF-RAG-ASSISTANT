@@ -139,9 +139,9 @@ flowchart TD
     subgraph GenerationFlow ["🛡️ Generation & Evidence Gate Flow"]
         FinalCandidates --> EvidenceGate{Evidence Gate\nCheck Similarity / Logit Thresholds}
         
-        EvidenceGate -->|Score < Threshold OR Empty Chunks| ControlledRefusal[🔴 Evidence: Insufficient\nControlled Refusal: No Hallucination]
+        EvidenceGate -->|Score < Threshold OR Empty Chunks| ControlledRefusal["🔴 Evidence: Insufficient\nControlled Refusal: No Hallucination"]
         
-        EvidenceGate -->|Score >= Threshold| ContextAssembly[Context Block Assembly\n[Context Block N | Doc, Page]]
+        EvidenceGate -->|Score >= Threshold| ContextAssembly["Context Block Assembly\n[Context Block N | Doc, Page]"]
         
         ContextAssembly --> MemoryInject[Inject Last 6 Conversation Turns]
         MemoryInject --> GroqLLM[Groq LLM: Llama 3.3 70B Versatile]
@@ -153,7 +153,7 @@ flowchart TD
     ControlledRefusal --> UI
     CitationAppender -->|Persist chat turn| ChatHistoryStore
     CitationAppender --> UI
-    UI -->|Source Preview| HighlightViewer[Inspector: Source Preview\nReconstruct Page + Yellow Highlighting]
+    UI -->|Source Preview| HighlightViewer["Inspector: Source Preview\nReconstruct Page + Yellow Highlighting"]
     DB_Chunks -.->|Fetch full page chunks| HighlightViewer
 ```
 
