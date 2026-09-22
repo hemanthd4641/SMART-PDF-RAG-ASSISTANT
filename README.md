@@ -69,69 +69,92 @@ The application is structured as an interactive Streamlit web interface backed b
 
 ## 4. Architecture
 
+> 📖 **Full Specification**: For detailed architectural subsystem analysis and component-to-file mappings, see [`docs/architecture.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/architecture.md).
+
 ```mermaid
 flowchart TD
-    User([User]) --> UI[Streamlit Web Interface]
+    User([👤 User / Client]) --> UI[🖥️ Streamlit Web Interface]
 
-    subgraph Ingestion ["Document Processing & Ingestion"]
-        UI -->|Upload PDF / DOCX / TXT| Val[File Validation & MD5 Duplicate Check]
-        Val --> Router{File Format?}
-        Router -->|PDF| ParserPDF[PyMuPDF Native Text Parser]
-        Router -->|DOCX| ParserDOCX[python-docx Parser]
-        Router -->|TXT| ParserTXT[Python Text Reader]
+    %% INGESTION FLOW
+    subgraph IngestionFlow ["📥 Ingestion & Document Processing Flow"]
+        UI -->|Upload PDF / DOCX / TXT| FileVal[🔍 File Validation & MD5 Duplicate Check]
+        FileVal --> FormatRouter{Format?}
         
-        ParserPDF --> OCRCheck{Native Text < 20 chars?}
-        OCRCheck -->|Yes: Scanned| OCR[EasyOCR 150 DPI Fallback]
-        OCRCheck -->|No| Plumber[pdfplumber Table Extractor]
-        OCR --> Plumber
+        FormatRouter -->|PDF| ParserPDF[PyMuPDF Native Text Parser]
+        FormatRouter -->|DOCX| ParserDOCX[python-docx Parser]
+        FormatRouter -->|TXT| ParserTXT[Python Text Reader]
         
-        Plumber --> Summary[Groq LLM: Auto-Summary & Key Topics JSON]
-        ParserDOCX --> Summary
-        ParserTXT --> Summary
+        ParserPDF --> ScannedCheck{Native Text < 20 chars?}
+        ScannedCheck -->|Yes: Scanned PDF| EasyOCR[EasyOCR 150 DPI Fallback]
+        ScannedCheck -->|No| TableExtract[pdfplumber Table Extractor]
+        EasyOCR --> TableExtract
         
-        Summary --> Chunk[Recursive Character Text Splitter\nchunk_size=500, overlap=100\nPreserves Tables Intact]
-        Chunk --> SaveDB[(Supabase PostgreSQL\nDocuments & Chunks)]
-        Chunk --> Embed[SentenceTransformer\nall-MiniLM-L6-v2]
-        Embed --> UpsertPinecone[(Pinecone Vector DB\nServerless 384-dim)]
-        SaveDB --> BuildBM25[BM25 Index Build / Update]
+        TableExtract --> DocSummary[Groq LLM: Auto-Summary & Key Topics JSON]
+        ParserDOCX --> DocSummary
+        ParserTXT --> DocSummary
+        
+        DocSummary --> Chunking[Recursive Character Splitter\nchunk_size=500, overlap=100\nPreserves Tables Intact]
+        Chunking --> EmbeddingEngine[SentenceTransformer\nall-MiniLM-L6-v2 384-dim]
     end
 
-    subgraph Retrieval ["Hybrid Retrieval Pipeline"]
-        UI -->|User Question / Comparison| QExp{Query Expansion\nEnabled?}
-        QExp -->|Yes| Expand[Groq LLM: 2 Query Variants]
-        QExp -->|No| SingleQ[Original Query Only]
-        Expand --> SearchExec
-        SingleQ --> SearchExec
+    %% PERSISTENCE LAYER
+    subgraph PersistenceLayer ["💾 Persistence Layer"]
+        DocSummary -->|Save doc metadata| DB_Docs[(Supabase: documents table)]
+        Chunking -->|Save text & table chunks| DB_Chunks[(Supabase: chunks table)]
+        EmbeddingEngine -->|Upsert 384-dim vectors + metadata| PineconeDB[(Pinecone Serverless: Vector Index)]
+        DB_Chunks -.->|Load corpus chunks| BM25Index[In-Memory BM25Okapi Index]
+        ChatHistoryStore[(Supabase: chat_history table)]
+    end
 
-        subgraph SearchExec ["Parallel Search Execution"]
-            Dense[Dense Search: Pinecone Cosine Similarity]
-            Sparse[Sparse Search: BM25 Keyword Scoring]
+    %% RETRIEVAL FLOW
+    subgraph RetrievalFlow ["🔍 Query & Hybrid Retrieval Flow"]
+        UI -->|Question / Comparison| ScopeFilter{Document Scope Filter}
+        ScopeFilter --> QueryExpCheck{Query Expansion\nEnabled?}
+        
+        QueryExpCheck -->|Yes| Expander[Groq LLM: 2 Query Variants]
+        QueryExpCheck -->|No| SingleQuery[Original Query]
+        Expander --> SearchEngine
+        SingleQuery --> SearchEngine
+
+        subgraph SearchEngine ["Parallel Hybrid Search Execution"]
+            DenseSearch[Dense Search: Embed Query → Pinecone Cosine Search]
+            SparseSearch[Sparse Search: BM25 Token Search]
         end
 
-        SearchExec --> RRF[Reciprocal Rank Fusion\nRRF k=60]
-        RRF --> RerankCheck{Re-ranking\nEnabled?}
+        SearchEngine --> RRFFusion[Reciprocal Rank Fusion RRF\nRRF score = sum 1 / rank + 60]
+        
+        RRFFusion --> RerankCheck{Re-ranking\nEnabled?}
         RerankCheck -->|Yes| CrossEncoder[Cross-Encoder ms-marco-MiniLM\nScore Query-Chunk Pairs]
         RerankCheck -->|No| TopRRF[Top Candidates by RRF Score]
+        
         CrossEncoder --> DedupCheck{Deduplication\nEnabled?}
         TopRRF --> DedupCheck
-        DedupCheck -->|Yes| Dedup[Jaccard Trigram Deduplication\nDrop >= 85% Overlap]
-        DedupCheck -->|No| FinalChunks[Final Context Chunks]
-        Dedup --> FinalChunks
+        
+        DedupCheck -->|Yes| TrigramDedup[Jaccard Trigram Deduplication\nDrop >= 85% Overlap]
+        DedupCheck -->|No| FinalCandidates[Final Top Chunks]
+        TrigramDedup --> FinalCandidates
     end
 
-    subgraph Generation ["Evidence Gate & Response Generation"]
-        FinalChunks --> Gate{Evidence Gate\nEvaluate Score Thresholds}
-        Gate -->|Score < Threshold / Empty| Refusal[🔴 Insufficient Evidence\nPolite Refusal: No Hallucination]
-        Gate -->|Score >= Threshold| ContextPrep[Context Assembly with Document & Page Labels]
-        ContextPrep --> Memory[Inject Last 6 Conversation Turns]
-        Memory --> LLM[Groq LLM: Llama 3.3 70B Versatile]
-        LLM --> Response[Generate Answer + Evidence Badge]
+    %% GENERATION & EVIDENCE GATE
+    subgraph GenerationFlow ["🛡️ Generation & Evidence Gate Flow"]
+        FinalCandidates --> EvidenceGate{Evidence Gate\nCheck Similarity / Logit Thresholds}
+        
+        EvidenceGate -->|Score < Threshold OR Empty Chunks| ControlledRefusal[🔴 Evidence: Insufficient\nControlled Refusal: No Hallucination]
+        
+        EvidenceGate -->|Score >= Threshold| ContextAssembly[Context Block Assembly\n[Context Block N | Doc, Page]]
+        
+        ContextAssembly --> MemoryInject[Inject Last 6 Conversation Turns]
+        MemoryInject --> GroqLLM[Groq LLM: Llama 3.3 70B Versatile]
+        
+        GroqLLM --> CitationAppender[Append Evidence Badge & Sources]
     end
 
-    Refusal --> UI
-    Response --> Citations[Extract & Append Document + Page Citations]
-    Citations --> History[(Persist to Supabase Chat History)]
-    History --> UI
+    %% OUTPUT & ATTRIBUTION
+    ControlledRefusal --> UI
+    CitationAppender -->|Persist chat turn| ChatHistoryStore
+    CitationAppender --> UI
+    UI -->|Source Preview| HighlightViewer[Inspector: Source Preview\nReconstruct Page + Yellow Highlighting]
+    DB_Chunks -.->|Fetch full page chunks| HighlightViewer
 ```
 
 ---
