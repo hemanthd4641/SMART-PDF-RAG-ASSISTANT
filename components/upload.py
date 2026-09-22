@@ -229,8 +229,13 @@ def render_upload_section() -> None:
 
             # Check if document is already in the database (duplicate guard)
             doc_id = hashlib.md5(file_name.encode("utf-8")).hexdigest()
-            existing_docs = fetch_all_documents()
-            existing_ids = {d["id"] for d in existing_docs}
+            try:
+                existing_docs = fetch_all_documents()
+                existing_ids = {d["id"] for d in existing_docs}
+            except Exception as err:
+                logger.warning(f"Could not check existing documents from database: {err}")
+                existing_ids = set()
+
             if doc_id in existing_ids:
                 st.warning(
                     f"**{file_name}** is already indexed. "
