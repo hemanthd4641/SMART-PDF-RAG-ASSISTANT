@@ -205,20 +205,31 @@ def parse_txt(file_path: str) -> Dict[str, Any]:
     document_name = os.path.basename(file_path)
     
     try:
+        if os.path.getsize(file_path) == 0:
+            raise DocumentParsingError("The TXT file is empty (0 bytes).")
+
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             text_content = f.read()
-            
+
+        stripped = text_content.strip()
+        if not stripped:
+            raise DocumentParsingError(
+                f"The TXT file '{document_name}' contains no readable text content."
+            )
+
         return {
             "document_name": document_name,
             "pages": [
                 {
                     "page_number": 1,
-                    "text": text_content.strip(),
+                    "text": stripped,
                     "tables": [],  # Standard text files contain no tables
                     "extraction_method": "native"
                 }
             ]
         }
+    except DocumentParsingError:
+        raise
     except Exception as e:
         logger.error(f"Failed to parse TXT file '{file_path}': {e}")
         raise DocumentParsingError(f"Failed to read TXT file: {e}")

@@ -17,7 +17,7 @@ PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
 PINECONE_ENV = os.getenv("PINECONE_ENV", "us-west1-gcp-free")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "rag-assistant-index")
 
-# Supabase Settings (replaces SQLite)
+# Supabase Settings
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 

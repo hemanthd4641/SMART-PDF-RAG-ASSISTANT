@@ -38,7 +38,7 @@ def tokenize(text: str) -> List[str]:
 
 
 class BM25Retriever:
-    """Manages the BM25 keyword index over all chunks currently stored in SQLite database."""
+    """Manages the BM25 keyword index over all chunks currently stored in Supabase."""
 
     def __init__(self):
         self.bm25 = None
@@ -46,12 +46,12 @@ class BM25Retriever:
         self.build_index()
 
     def build_index(self) -> None:
-        """Loads all chunks from SQLite database and builds the BM25Okapi index."""
+        """Loads all chunks from Supabase and builds the BM25Okapi index."""
         try:
-            logger.info("Building BM25 index from SQLite chunks corpus...")
+            logger.info("Building BM25 index from Supabase chunks corpus...")
             self.chunks = fetch_all_chunks()
             if not self.chunks:
-                logger.warning("No chunks found in SQLite database. BM25 index is empty.")
+                logger.warning("No chunks found in Supabase. BM25 index is empty.")
                 self.bm25 = None
                 return
                 

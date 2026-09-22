@@ -15,11 +15,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize Relational Database Schema
+# Initialize database connectivity (Supabase PostgreSQL)
 try:
-    init_db()
+    from utils.config import is_db_configured
+    if is_db_configured():
+        init_db()
+    else:
+        st.warning(
+            "⚠️ **Supabase credentials missing** — set `SUPABASE_URL` and `SUPABASE_KEY` in `.env`. "
+            "Document metadata and chat history will not be saved."
+        )
 except Exception as e:
-    st.error(f"Failed to initialize metadata database: {e}")
+    logger.error(f"Supabase init failed: {e}")
+    st.error(
+        "Failed to connect to the database. "
+        "Check `SUPABASE_URL` and `SUPABASE_KEY` in your `.env` file."
+    )
 
 # Render Sidebar Component
 render_sidebar()

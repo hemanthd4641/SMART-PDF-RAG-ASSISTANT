@@ -132,7 +132,7 @@ def render_chat_interface() -> None:
         all_docs = []
         doc_names = []
 
-    # ── Load full chat history from SQLite for display ───────────────────────
+    # ── Load full chat history from Supabase for display ────────────────────
     try:
         history = fetch_chat_history()
     except Exception as e:
@@ -253,7 +253,10 @@ def render_chat_interface() -> None:
 
         except Exception as e:
             logger.error(f"RAG execution failure: {e}")
-            st.error(f"Something went wrong: {e}")
+            st.error(
+                "Something went wrong while processing your question. "
+                "Please try again or check the application logs."
+            )
             return
 
     else:
@@ -329,7 +332,7 @@ def render_chat_interface() -> None:
                         unsafe_allow_html=True,
                     )
 
-    # ── Persist to SQLite ────────────────────────────────────────────────────
+    # ── Persist to Supabase ──────────────────────────────────────────────────
     try:
         insert_chat_history(user_query, answer)
         st.rerun()

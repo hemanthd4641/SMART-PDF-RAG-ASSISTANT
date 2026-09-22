@@ -57,7 +57,10 @@ def get_client() -> Client:
         raise SupabaseConnectionError(msg)
 
     try:
-        logger.info(f"Initializing Supabase client → {SUPABASE_URL}")
+        # Log only the hostname — never the full URL which may contain auth tokens
+        from urllib.parse import urlparse
+        _host = urlparse(SUPABASE_URL).netloc or SUPABASE_URL
+        logger.info(f"Initializing Supabase client → {_host}")
         _client = create_client(SUPABASE_URL, SUPABASE_KEY)
         logger.info("Supabase client initialized successfully.")
         return _client

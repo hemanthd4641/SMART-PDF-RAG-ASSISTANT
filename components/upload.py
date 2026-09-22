@@ -74,7 +74,7 @@ def _process_single_file(
         with st.spinner(f"Chunking **{file_name}**..."):
             chunks = chunker.chunk_document(parsed_doc)
 
-        # Step D: Save to SQLite
+        # Step D: Save document metadata and chunks to Supabase
         insert_document(
             doc_id=doc_id,
             document_name=file_name,
@@ -216,6 +216,14 @@ def render_upload_section() -> None:
                 st.error(
                     f"**{file_name}** rejected: Exceeds 50 MB limit "
                     f"(Size: {format_file_size(file_size)})."
+                )
+                continue
+
+            # Validate file is not empty (0 bytes)
+            if file_size == 0:
+                st.error(
+                    f"**{file_name}** rejected: File is empty (0 bytes). "
+                    "Please upload a file with content."
                 )
                 continue
 
