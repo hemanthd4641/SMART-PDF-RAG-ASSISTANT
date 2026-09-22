@@ -203,11 +203,10 @@ class LLMService:
         )
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model_name,
+            response = self._call_completion(
                 messages=messages,
-                temperature=0.4,   # Slightly warmer for conversational tone
-                max_tokens=1500,   # Allow detailed answers
+                temperature=0.4,
+                max_tokens=1500,
             )
 
             completion_text = response.choices[0].message.content.strip()
@@ -225,6 +224,38 @@ class LLMService:
             logger.error(f"Error calling Groq API: {e}")
             raise RuntimeError(f"Groq API generation failure: {e}")
 
+    def _call_completion(self, messages: List[Dict[str, str]], temperature: float = 0.4, max_tokens: int = 1500, response_format: Dict = None):
+        """Calls Groq chat completion with automatic model fallback if model_name is not found."""
+        fallback_models = [
+            self.model_name,
+            "llama-3.3-70b-versatile",
+            "qwen/qwen3.8-27b",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+        ]
+        seen = set()
+        candidates = [m for m in fallback_models if m and not (m in seen or seen.add(m))]
+
+        last_error = None
+        for candidate_model in candidates:
+            try:
+                kwargs = {
+                    "model": candidate_model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                }
+                if response_format:
+                    kwargs["response_format"] = response_format
+                return self.client.chat.completions.create(**kwargs)
+            except Exception as err:
+                err_str = str(err)
+                if "404" in err_str or "model_not_found" in err_str or "decommissioned" in err_str:
+                    logger.warning(f"Groq model '{candidate_model}' unavailable, trying fallback candidate...")
+                    last_error = err
+                    continue
+                raise err
+        raise last_error
 
     def generate_summary(self, doc_text: str) -> Dict[str, str]:
         """
@@ -252,8 +283,7 @@ class LLMService:
         )
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model_name,
+            response = self._call_completion(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Document Text:\n{sample_text}"}
