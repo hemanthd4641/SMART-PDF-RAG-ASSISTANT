@@ -8,9 +8,9 @@ This directory contains pre-packaged sample documents for testing, evaluation, a
 
 | Document | Format | Pages | Content Overview |
 |---|---|---|---|
-| [`Employee_Handbook_2026.pdf`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Employee_Handbook_2026.pdf) | PDF (Digital) | 2 | Company mission, working hours (9 AM–5 PM), 3-month probation period, healthcare benefits, and 30-day resignation notice. |
-| [`Leave_Policy_2026.pdf`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Leave_Policy_2026.pdf) | PDF (Digital) | 2 | 24 days annual leave, 5 days carry-forward before March 31, 10 days sick leave, 16 weeks maternity leave, and 11 public holidays. |
-| [`Contractor_Agreement_Guidelines_2026.docx`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Contractor_Agreement_Guidelines_2026.docx) | DOCX (Word) | 1 | SOW deliverables, Net 30 billing, 14-day termination notice, and summary comparison table. |
+| [`Employee_Handbook_2026.pdf`](./Employee_Handbook_2026.pdf) | PDF (Digital) | 2 | Company mission, working hours (9 AM–5 PM), 3-month probation period, healthcare benefits, and 30-day resignation notice. |
+| [`Leave_Policy_2026.pdf`](./Leave_Policy_2026.pdf) | PDF (Digital) | 2 | 24 days annual leave, 5 days carry-forward before March 31, 10 days sick leave, 16 weeks maternity leave, and 11 public holidays. |
+| [`Contractor_Agreement_Guidelines_2026.docx`](./Contractor_Agreement_Guidelines_2026.docx) | DOCX (Word) | 1 | SOW deliverables, Net 30 billing, 14-day termination notice, and summary comparison table. |
 
 ---
 

@@ -149,20 +149,20 @@ flowchart TD
 
 | Diagram Component | Source File | Key Class / Function |
 |---|---|---|
-| **Streamlit Web UI** | [`app.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/app.py) | `main()` layout and session state orchestration |
-| **Upload & Ingestion** | [`components/upload.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/components/upload.py) | `render_upload_section()`, `process_uploaded_file()` |
-| **PDF/TXT Parsing & OCR** | [`services/parser.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/parser.py) | `parse_document()`, `parse_pdf()`, `table_to_markdown()` |
-| **DOCX Parsing** | [`services/docx_parser.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/docx_parser.py) | `extract_docx_text()` |
-| **OCR Engine** | [`services/ocr.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/ocr.py) | `extract_text_from_image()`, `EasyOCRService` |
-| **Chunking** | [`services/chunker.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/chunker.py) | `DocumentChunker`, `RecursiveTextSplitter` |
-| **Embeddings** | [`services/embeddings.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/embeddings.py) | `EmbeddingService.embed_chunks()`, `embed_query()` |
-| **Pinecone Vector Store** | [`services/pinecone_store.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/pinecone_store.py) | `PineconeStore.upsert_chunks()`, `query_similar_chunks()` |
-| **BM25 Keyword Search** | [`services/bm25_retriever.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/bm25_retriever.py) | `BM25Retriever.retrieve_bm25()`, `build_index()` |
-| **RRF Fusion** | [`services/hybrid_retriever.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/hybrid_retriever.py) | `reciprocal_rank_fusion()` |
-| **Cross-Encoder Re-Ranking** | [`services/reranker.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/reranker.py) | `RerankerService.rerank()` |
-| **Query Expansion** | [`services/query_expander.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/query_expander.py) | `QueryExpander.expand_query()` |
-| **Chunk Deduplication** | [`services/deduplicator.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/deduplicator.py) | `deduplicate_chunks()`, `jaccard_similarity()` |
-| **Evidence Gate** | [`services/evidence_gate.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/evidence_gate.py) | `EvidenceGate.evaluate()` |
-| **LLM Generation & Citations** | [`services/llm.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/services/llm.py) | `LLMService.generate_response()`, `generate_citations_block()` |
-| **Database Persistence** | [`database/database.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/database/database.py) | `save_document()`, `save_chunks()`, `save_chat_turn()` |
-| **Inspector & Source Preview** | [`components/sidebar.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/components/sidebar.py) | `render_inspector_panel()`, `render_source_preview_tab()` |
+| **Streamlit Web UI** | [`app.py`](../app.py) | `main()` layout and session state orchestration |
+| **Upload & Ingestion** | [`components/upload.py`](../components/upload.py) | `render_upload_section()`, `process_uploaded_file()` |
+| **PDF/TXT Parsing & OCR** | [`services/parser.py`](../services/parser.py) | `parse_document()`, `parse_pdf()`, `table_to_markdown()` |
+| **DOCX Parsing** | [`services/docx_parser.py`](../services/docx_parser.py) | `extract_docx_text()` |
+| **OCR Engine** | [`services/ocr.py`](../services/ocr.py) | `extract_text_from_image()`, `EasyOCRService` |
+| **Chunking** | [`services/chunker.py`](../services/chunker.py) | `DocumentChunker`, `RecursiveTextSplitter` |
+| **Embeddings** | [`services/embeddings.py`](../services/embeddings.py) | `EmbeddingService.embed_chunks()`, `embed_query()` |
+| **Pinecone Vector Store** | [`services/pinecone_store.py`](../services/pinecone_store.py) | `PineconeStore.upsert_chunks()`, `query_similar_chunks()` |
+| **BM25 Keyword Search** | [`services/bm25_retriever.py`](../services/bm25_retriever.py) | `BM25Retriever.retrieve_bm25()`, `build_index()` |
+| **RRF Fusion** | [`services/hybrid_retriever.py`](../services/hybrid_retriever.py) | `reciprocal_rank_fusion()` |
+| **Cross-Encoder Re-Ranking** | [`services/reranker.py`](../services/reranker.py) | `RerankerService.rerank()` |
+| **Query Expansion** | [`services/query_expander.py`](../services/query_expander.py) | `QueryExpander.expand_query()` |
+| **Chunk Deduplication** | [`services/deduplicator.py`](../services/deduplicator.py) | `deduplicate_chunks()`, `jaccard_similarity()` |
+| **Evidence Gate** | [`services/evidence_gate.py`](../services/evidence_gate.py) | `EvidenceGate.evaluate()` |
+| **LLM Generation & Citations** | [`services/llm.py`](../services/llm.py) | `LLMService.generate_response()`, `generate_citations_block()` |
+| **Database Persistence** | [`database/database.py`](../database/database.py) | `save_document()`, `save_chunks()`, `save_chat_turn()` |
+| **Inspector & Source Preview** | [`components/sidebar.py`](../components/sidebar.py) | `render_inspector_panel()`, `render_source_preview_tab()` |

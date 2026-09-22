@@ -69,7 +69,7 @@ The application is structured as an interactive Streamlit web interface backed b
 
 ## 4. Architecture
 
-> 📖 **Full Specification**: For detailed architectural subsystem analysis and component-to-file mappings, see [`docs/architecture.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/architecture.md).
+> 📖 **Full Specification**: For detailed architectural subsystem analysis and component-to-file mappings, see [`docs/architecture.md`](docs/architecture.md).
 
 ```
 Document Upload (PDF / DOCX / TXT)
@@ -349,7 +349,19 @@ SMART-PDF-RAG-ASSISTANT/
 │   ├── config.py                   # Environment variable loader & constants
 │   └── helpers.py                  # Logging factory, timing decorator, formatters
 │
-├── data/                           # Sample test documents
+├── docs/                           # Architecture, submission audits & demo guides
+│   ├── architecture.md             # Complete system architecture specification
+│   ├── demo-checklist.md           # 5–8 minute video demonstration walkthrough script
+│   ├── time-spent.md               # 8.0-hour development breakdown log
+│   └── final-submission-audit.md   # Final assessment verification report
+│
+├── sample_documents/               # Pre-packaged evaluation documents
+│   ├── Employee_Handbook_2026.pdf  # Sample PDF: Hours, probation, benefits, notice
+│   ├── Leave_Policy_2026.pdf       # Sample PDF: Annual leave, sick leave, carry-forward
+│   ├── Contractor_Agreement_Guidelines_2026.docx # Sample DOCX: SOW, payment, notice
+│   └── README.md                   # Evaluation instructions & verified test questions
+│
+├── data/                           # Evaluation document repository
 │   ├── test_company.pdf            # Pre-packaged sample PDF for evaluation
 │   └── .gitkeep
 │
@@ -360,7 +372,8 @@ SMART-PDF-RAG-ASSISTANT/
     ├── test_docx.py                # DOCX parser & chunker integration tests
     ├── test_chunker.py             # Recursive splitter boundary & overlap tests
     ├── test_citations.py           # Citation block formatting & deduplication tests
-    └── test_hybrid.py              # BM25 tokenization & RRF fusion tests
+    ├── test_hybrid.py              # BM25 tokenization & RRF fusion tests
+    └── test_smoke.py               # 10-point evaluator smoke test
 ```
 
 ---
@@ -477,13 +490,13 @@ python scratch/test_hybrid.py
 
 ## 18. Sample Documents
 
-Pre-packaged sample evaluation documents and test instructions are available in the [`sample_documents/`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/) directory:
+Pre-packaged sample evaluation documents and test instructions are available in the [`sample_documents/`](sample_documents/) directory:
 
-- [`sample_documents/Employee_Handbook_2026.pdf`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Employee_Handbook_2026.pdf) (Working hours, 3-month probation, healthcare benefits, notice period)
-- [`sample_documents/Leave_Policy_2026.pdf`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Leave_Policy_2026.pdf) (24 days annual leave, 5 days carry-forward, 10 days sick leave, 16 weeks maternity)
-- [`sample_documents/Contractor_Agreement_Guidelines_2026.docx`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Contractor_Agreement_Guidelines_2026.docx) (SOW deliverables, Net 30 payment, 14-day notice, policy matrix)
+- [`sample_documents/Employee_Handbook_2026.pdf`](sample_documents/Employee_Handbook_2026.pdf) (Working hours, 3-month probation, healthcare benefits, notice period)
+- [`sample_documents/Leave_Policy_2026.pdf`](sample_documents/Leave_Policy_2026.pdf) (24 days annual leave, 5 days carry-forward, 10 days sick leave, 16 weeks maternity)
+- [`sample_documents/Contractor_Agreement_Guidelines_2026.docx`](sample_documents/Contractor_Agreement_Guidelines_2026.docx) (SOW deliverables, Net 30 payment, 14-day notice, policy matrix)
 
-> 📖 **Evaluation & Demo Scripts**: See [`sample_documents/README.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/README.md) for suggested demo questions and expected behaviors, and [`docs/demo-checklist.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/demo-checklist.md) for the 5–8 minute video walkthrough script.
+> 📖 **Evaluation & Demo Scripts**: See [`sample_documents/README.md`](sample_documents/README.md) for suggested demo questions and expected behaviors, and [`docs/demo-checklist.md`](docs/demo-checklist.md) for the 5–8 minute video walkthrough script.
 
 ---
 
@@ -532,9 +545,17 @@ AI tools were used as development assistants. The final application architecture
 
 ---
 
-## 22. Development Time
+## 22. Demo Video
 
-> ⏱️ **Detailed Log**: For the complete development time distribution, see [`docs/time-spent.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/time-spent.md).
+> 🎥 **Walkthrough Video**: *Demo video: to be added before submission*
+>
+> *(See [`docs/demo-checklist.md`](docs/demo-checklist.md) for the exact 5–8 minute demonstration script and timeline)*
+
+---
+
+## 23. Development Time
+
+> ⏱️ **Detailed Log**: For the complete development time distribution, see [`docs/time-spent.md`](docs/time-spent.md).
 
 | Area | Approx. Time |
 |---|---:|

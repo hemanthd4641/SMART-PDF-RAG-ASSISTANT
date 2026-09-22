@@ -13,11 +13,11 @@
 | # | Requirement | Status | Evidence & Verification |
 |---|---|:---:|---|
 | 1 | **Source Code & Git Repository** | **PASS** | Clean Python repository structured across `components/`, `services/`, `database/`, `utils/`, with Git commit history on `origin/main`. |
-| 2 | **README.md (Setup & Design Decisions)** | **PASS** | [`README.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/README.md) contains all 22 required sections, complete setup steps, tech stack trade-offs, and retrieval rationale. |
-| 3 | **Architecture Diagram** | **PASS** | Multi-subsystem Mermaid diagram embedded in `README.md` and detailed specification in [`docs/architecture.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/architecture.md). |
-| 4 | **5–8 Minute Demo Script** | **PASS** | Chronological script with exact prompts, talking points, and actions provided in [`docs/demo-checklist.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/demo-checklist.md). |
-| 5 | **Sample Documents** | **PASS** | Three realistic test documents in [`sample_documents/`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/) (`Employee_Handbook_2026.pdf`, `Leave_Policy_2026.pdf`, `Contractor_Agreement_Guidelines_2026.docx`) + [`sample_documents/README.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/README.md). |
-| 6 | **8-Hour Time-Spent Log** | **PASS** | Detailed breakdown and explanatory notes provided in [`docs/time-spent.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/time-spent.md) and referenced in `README.md`. |
+| 2 | **README.md (Setup & Design Decisions)** | **PASS** | [`README.md`](../README.md) contains all 22 required sections, complete setup steps, tech stack trade-offs, and retrieval rationale. |
+| 3 | **Architecture Diagram** | **PASS** | Multi-subsystem Mermaid diagram embedded in `README.md` and detailed specification in [`docs/architecture.md`](./architecture.md). |
+| 4 | **5–8 Minute Demo Script** | **PASS** | Chronological script with exact prompts, talking points, and actions provided in [`docs/demo-checklist.md`](./demo-checklist.md). |
+| 5 | **Sample Documents** | **PASS** | Three realistic test documents in [`sample_documents/`](../sample_documents/) (`Employee_Handbook_2026.pdf`, `Leave_Policy_2026.pdf`, `Contractor_Agreement_Guidelines_2026.docx`) + [`sample_documents/README.md`](../sample_documents/README.md). |
+| 6 | **8-Hour Time-Spent Log** | **PASS** | Detailed breakdown and explanatory notes provided in [`docs/time-spent.md`](./time-spent.md) and referenced in `README.md`. |
 
 ---
 
@@ -70,18 +70,18 @@
 
 ## 5. Documentation Verification
 
-- [`README.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/README.md): Covers all 22 required assessment sections without marketing fluff or unsupported claims.
-- [`docs/architecture.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/architecture.md): Complete architecture specification with full Mermaid diagram and file-to-component mapping table.
-- [`docs/demo-checklist.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/demo-checklist.md): Minute-by-minute script for a 5–8 minute video.
-- [`docs/time-spent.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/time-spent.md): 8.0-hour development breakdown.
-- [`.env.example`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/.env.example): Fully documented template with exact variable names and console URLs.
-- [`.gitignore`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/.gitignore): Clean exclusion of secrets, `.env`, virtualenvs, caches, databases, and temporary files.
+- [`README.md`](../README.md): Covers all 22 required assessment sections without marketing fluff or unsupported claims.
+- [`docs/architecture.md`](./architecture.md): Complete architecture specification with full Mermaid diagram and file-to-component mapping table.
+- [`docs/demo-checklist.md`](./demo-checklist.md): Minute-by-minute script for a 5–8 minute video.
+- [`docs/time-spent.md`](./time-spent.md): 8.0-hour development breakdown.
+- [`.env.example`](../.env.example): Fully documented template with exact variable names and console URLs.
+- [`.gitignore`](../.gitignore): Clean exclusion of secrets, `.env`, virtualenvs, caches, databases, and temporary files.
 
 ---
 
 ## 6. Sample Document Verification
 
-The three pre-packaged evaluation documents in [`sample_documents/`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/) were verified against all demo questions:
+The three pre-packaged evaluation documents in [`sample_documents/`](../sample_documents/) were verified against all demo questions:
 1. `Employee_Handbook_2026.pdf`: Verifies 9 AM–5 PM hours, 3-month probation, healthcare premiums (85%/60%), and 30-day notice.
 2. `Leave_Policy_2026.pdf`: Verifies 24 days annual leave, 5 days carry-forward before March 31, 10 days sick leave, and 16 weeks maternity.
 3. `Contractor_Agreement_Guidelines_2026.docx`: Verifies SOW scope, Net 30 payment, 14-day notice, and employee vs. contractor comparison matrix.
@@ -94,13 +94,13 @@ All test suites executed locally and passed with **100% success**:
 
 | Test Suite | Assertions / Tests | Status | Key Verifications |
 |---|:---:|:---:|---|
-| [`scratch/test_assessment_readiness.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/scratch/test_assessment_readiness.py) | **9 / 9** | **PASS** | Ingestion, answerable Q&A, unrelated refusal, cross-doc retrieval, follow-up memory, scope filtering, MD5 duplicate guard, invalid file errors, yellow source preview, comparison grounding. |
-| [`scratch/test_reliability.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/scratch/test_reliability.py) | **30 / 30** | **PASS** | 0-byte file guard, whitespace validation, BM25 empty query handling, Evidence Gate thresholding, .env isolation, zero hardcoded secrets. |
-| [`scratch/test_comparison.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/scratch/test_comparison.py) | **4 / 4** | **PASS** | Multi-doc citation formatting, single-doc query formatting, unsupported comparison blocking, source tracking integrity. |
-| [`scratch/test_docx.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/scratch/test_docx.py) | **4 / 4** | **PASS** | Multi-paragraph DOCX extraction, empty DOCX exception, corrupted DOCX error handling, chunker integration. |
-| [`scratch/test_chunker.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/scratch/test_chunker.py) | **PASS** | **PASS** | Recursive splitting boundaries, overlap preservation, oversized word splitting. |
-| [`scratch/test_citations.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/scratch/test_citations.py) | **PASS** | **PASS** | Rich citation layout, evidence badge formatting, citation deduplication, empty context refusal. |
-| [`scratch/test_hybrid.py`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/scratch/test_hybrid.py) | **PASS** | **PASS** | BM25 tokenization, exact code matching (`INV-2024-8891`), RRF score fusion ordering. |
+| [`scratch/test_assessment_readiness.py`](../scratch/test_assessment_readiness.py) | **9 / 9** | **PASS** | Ingestion, answerable Q&A, unrelated refusal, cross-doc retrieval, follow-up memory, scope filtering, MD5 duplicate guard, invalid file errors, yellow source preview, comparison grounding. |
+| [`scratch/test_reliability.py`](../scratch/test_reliability.py) | **30 / 30** | **PASS** | 0-byte file guard, whitespace validation, BM25 empty query handling, Evidence Gate thresholding, .env isolation, zero hardcoded secrets. |
+| [`scratch/test_comparison.py`](../scratch/test_comparison.py) | **4 / 4** | **PASS** | Multi-doc citation formatting, single-doc query formatting, unsupported comparison blocking, source tracking integrity. |
+| [`scratch/test_docx.py`](../scratch/test_docx.py) | **4 / 4** | **PASS** | Multi-paragraph DOCX extraction, empty DOCX exception, corrupted DOCX error handling, chunker integration. |
+| [`scratch/test_chunker.py`](../scratch/test_chunker.py) | **PASS** | **PASS** | Recursive splitting boundaries, overlap preservation, oversized word splitting. |
+| [`scratch/test_citations.py`](../scratch/test_citations.py) | **PASS** | **PASS** | Rich citation layout, evidence badge formatting, citation deduplication, empty context refusal. |
+| [`scratch/test_hybrid.py`](../scratch/test_hybrid.py) | **PASS** | **PASS** | BM25 tokenization, exact code matching (`INV-2024-8891`), RRF score fusion ordering. |
 
 ---
 
