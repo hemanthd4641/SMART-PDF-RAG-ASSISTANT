@@ -1,8 +1,63 @@
+# Environment variables and secrets
 .env
+.env.local
+.env.*.local
+
+# Python cache and bytecode
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
 venv/
 .venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Streamlit local runtime state
+.streamlit/secrets.toml
+
+# PyTorch / EasyOCR / HuggingFace model cache
+.cache/
+torch_cache/
+
+# Local databases, temporary files and logs
 data/temp_uploads/
 *.db
 *.sqlite3
+*.log
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE and OS files
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

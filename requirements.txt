@@ -9,3 +9,5 @@ easyocr
 rank-bm25
 python-docx
 supabase>=2.3.0
+Pillow>=9.0.0
+numpy
