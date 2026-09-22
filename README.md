@@ -464,10 +464,13 @@ python scratch/test_hybrid.py
 
 ## 18. Sample Documents
 
-A pre-packaged test PDF is included in the repository:
-- **Path**: `data/test_company.pdf`
-- **Contents**: A multi-section document covering company overview, organizational structure, leave policies, and working hours.
-- **How to Use**: Upload `data/test_company.pdf` via the sidebar uploader to test ingestion, summary extraction, question answering, and yellow source preview highlighting.
+Pre-packaged sample evaluation documents and test instructions are available in the [`sample_documents/`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/) directory:
+
+- [`sample_documents/Employee_Handbook_2026.pdf`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Employee_Handbook_2026.pdf) (Working hours, 3-month probation, healthcare benefits, notice period)
+- [`sample_documents/Leave_Policy_2026.pdf`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Leave_Policy_2026.pdf) (24 days annual leave, 5 days carry-forward, 10 days sick leave, 16 weeks maternity)
+- [`sample_documents/Contractor_Agreement_Guidelines_2026.docx`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/Contractor_Agreement_Guidelines_2026.docx) (SOW deliverables, Net 30 payment, 14-day notice, policy matrix)
+
+> 📖 **Evaluation & Demo Scripts**: See [`sample_documents/README.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/sample_documents/README.md) for suggested demo questions and expected behaviors, and [`docs/demo-checklist.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/demo-checklist.md) for the 5–8 minute video walkthrough script.
 
 ---
 
@@ -504,12 +507,16 @@ In compliance with assessment transparency guidelines, the following AI tools as
 
 ## 22. Development Time
 
-| Phase | Estimated Time | Tasks Completed |
-|---|---|---|
-| **1. Architecture & Pipeline Design** | 0.5 Hours | Requirements analysis, RAG architecture formulation, RRF fusion formulas, technology stack selection. |
-| **2. Document Processing & Ingestion** | 2.0 Hours | PyMuPDF text parser, EasyOCR fallback, `pdfplumber` table extraction, `python-docx` parser, chunker with table preservation. |
-| **3. Vector Indexing & Hybrid Retrieval** | 2.0 Hours | Pinecone serverless integration, BM25 indexing, Reciprocal Rank Fusion, Cross-Encoder re-ranking, query expansion. |
-| **4. Generation, Evidence Gate & Comparison** | 1.5 Hours | Groq Llama 3.3 integration, heuristic evidence gate, source citation formatter, yellow passage preview, multi-document comparison mode. |
-| **5. Reliability, Security & Testing** | 1.0 Hours | Error handling pass, environment variable validation, 30 automated reliability tests in `scratch/test_reliability.py`. |
-| **6. Documentation & Walkthrough** | 1.0 Hours | Comprehensive `README.md` authoring, Mermaid data flow diagrams, setup documentation. |
-| **Total** | **8.0 Hours** | Complete implementation, testing, and submission-ready documentation. |
+> ⏱️ **Detailed Log**: For the complete development time distribution, see [`docs/time-spent.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/time-spent.md).
+
+| Area | Approx. Time |
+|---|---:|
+| Assessment analysis and existing project review | 0.5 hours |
+| Document processing & ingestion (PDF/DOCX/OCR/Table extraction) | 1.5 hours |
+| RAG & hybrid retrieval pipeline (Dense + BM25 + RRF + Cross-Encoder) | 2.0 hours |
+| Evidence & hallucination handling (3-tier Evidence Gate & Refusals) | 1.0 hours |
+| UI & creative features (Source Preview Highlighting, Comparison Table, Ask This Doc) | 1.0 hours |
+| Testing & debugging (Automated test suites: 30 reliability tests, 9 assessment scenarios) | 1.0 hours |
+| Documentation & architecture specification (`README.md`, `docs/architecture.md`) | 0.5 hours |
+| Demo preparation (Sample document package, sample README, and demo checklist) | 0.5 hours |
+| **Total** | **~8.0 hours** |
