@@ -95,9 +95,9 @@ class RAGRetriever:
         query: str,
         top_k: int = 5,
         document_filter: Optional[List[str]] = None,
-        use_reranker: bool = False,
-        use_query_expansion: bool = False,
-        use_deduplication: bool = False,
+        use_reranker: bool = True,
+        use_query_expansion: bool = True,
+        use_deduplication: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Runs hybrid search (Pinecone dense + BM25 sparse) merged with Reciprocal Rank Fusion (RRF).

@@ -17,36 +17,15 @@ def render_sidebar() -> None:
         # Check API status configuration
         if is_configured():
             st.success("API Keys Loaded")
-            st.toggle(
-                "Enable Re-ranking",
-                value=True,
-                key="use_reranker",
-                help="Retrieves top 20 matches from Pinecone and re-ranks them using cross-encoder/ms-marco-MiniLM-L-6-v2.",
-            )
-            st.toggle(
-                "Enable Query Expansion",
-                value=False,
-                key="use_query_expansion",
-                help=(
-                    "Uses Groq to generate 2 alternative phrasings of your query before retrieval. "
-                    "Broadens semantic coverage — helpful for vague or ambiguous questions."
-                ),
-            )
-            st.toggle(
-                "Enable Chunk Deduplication",
-                value=False,
-                key="use_deduplication",
-                help=(
-                    "Removes near-duplicate retrieved chunks (≥85% Jaccard similarity) before "
-                    "sending context to the LLM. Reduces repetition in answers."
-                ),
+            st.markdown(
+                "**Pipeline Features (Active)**:\n"
+                "- 🎯 Cross-Encoder Re-Ranking: `Active`\n"
+                "- 🔄 Query Expansion: `Active`\n"
+                "- 🧹 Chunk Deduplication: `Active`"
             )
         else:
             st.warning("API Keys Missing")
             st.info("Ensure GROQ_API_KEY and PINECONE_API_KEY are configured in .env file.")
-            st.session_state["use_reranker"] = False
-            st.session_state["use_query_expansion"] = False
-            st.session_state["use_deduplication"] = False
 
             
         st.markdown("---")

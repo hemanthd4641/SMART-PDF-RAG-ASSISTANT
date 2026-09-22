@@ -207,14 +207,15 @@ def render_chat_interface() -> None:
             # Fetch last 6 turns (3 exchanges) for conversation memory
             recent_history = fetch_recent_chat_history(limit=6)
 
-            use_reranker = st.session_state.get("use_reranker", False)
-            use_query_expansion = st.session_state.get("use_query_expansion", False)
-            use_deduplication = st.session_state.get("use_deduplication", False)
+            # RAG pipeline features run automatically
+            use_reranker = True
+            use_query_expansion = True
+            use_deduplication = True
             doc_filter = selected_docs if selected_docs else None
             is_comp = len(selected_docs) >= 2
 
             with st.spinner(""):
-                # Step 1 — Retrieve relevant chunks
+                # Step 1 — Retrieve relevant chunks (Query Expansion + Hybrid RRF + Cross-Encoder Rerank + Deduplication)
                 retrieved_chunks = retriever.retrieve(
                     user_query,
                     top_k=5,
