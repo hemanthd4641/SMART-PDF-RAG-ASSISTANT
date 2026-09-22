@@ -507,14 +507,28 @@ Pre-packaged sample evaluation documents and test instructions are available in 
 
 ## 21. AI Tools Used
 
-In compliance with assessment transparency guidelines, the following AI tools assisted during development:
+In accordance with the assessment's AI-assisted development transparency requirements, the following AI tools were used during development:
 
-- **Claude &ChatGPT**:
-  - Architecture design for the multi-stage hybrid RRF pipeline and cross-encoder re-ranking.
-  - Drafting test assertions in `scratch/` for parser edge cases, chunk boundary testing, and schema migrations.
-  - Formulating system prompts for strict document grounding and JSON-mode summary extraction.
-- **Antigravity IDE**:
-  - Code completion for Streamlit layout components, PyMuPDF extraction routines, and Supabase client calls.
+### ChatGPT and Claude
+
+Used primarily for:
+
+* Discussing and reviewing the architecture of the multi-stage hybrid RAG pipeline, including dense retrieval, BM25, Reciprocal Rank Fusion (RRF), and cross-encoder reranking.
+* Exploring implementation approaches and edge cases for document parsing, chunking, retrieval, and grounding.
+* Drafting and reviewing test cases for parser edge cases, chunk boundaries, and schema-related changes.
+* Developing and refining system-prompt strategies for strict document grounding and structured JSON-based summary extraction.
+* Reviewing implementation decisions and identifying potential failure cases.
+
+### Antigravity IDE
+
+Used as an AI-assisted development environment for:
+
+* Code completion and implementation assistance for Streamlit UI components.
+* Assistance with PyMuPDF-based PDF extraction routines.
+* Assistance with Supabase client integration and related application code.
+* Iterative code review, debugging, and implementation support.
+
+AI tools were used as development assistants. The final application architecture, integration, configuration, testing, debugging, and verification were reviewed and validated as part of the development process.
 
 ---
 
