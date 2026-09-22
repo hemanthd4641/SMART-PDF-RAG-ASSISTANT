@@ -45,11 +45,16 @@ class BM25Retriever:
         self.chunks = []
         self.build_index()
 
-    def build_index(self) -> None:
-        """Loads all chunks from Supabase and builds the BM25Okapi index."""
+    def build_index(self, chunks: Optional[List[Dict[str, Any]]] = None) -> None:
+        """Loads all chunks from Supabase (or uses provided chunks) and builds the BM25Okapi index."""
         try:
-            logger.info("Building BM25 index from Supabase chunks corpus...")
-            self.chunks = fetch_all_chunks()
+            if chunks is not None:
+                self.chunks = chunks
+                logger.info(f"Building BM25 index from provided corpus of {len(chunks)} chunks...")
+            else:
+                logger.info("Building BM25 index from Supabase chunks corpus...")
+                self.chunks = fetch_all_chunks()
+
             if not self.chunks:
                 logger.warning("No chunks found in Supabase. BM25 index is empty.")
                 self.bm25 = None

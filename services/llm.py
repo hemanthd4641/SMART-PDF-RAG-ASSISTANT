@@ -75,37 +75,18 @@ class LLMService:
             logger.error(f"Failed to connect to Groq: {e}")
             raise RuntimeError(f"Groq client connection failure: {e}")
 
-    def generate_response(
+    def _build_messages(
         self,
-        user_question: str,
-        retrieved_chunks: List[Dict[str, Any]],
-        conversation_history: List[Dict[str, str]] = None,
-        evidence_level: str = "Strong Evidence",
+        query: str,
+        context_chunks: List[Dict[str, Any]],
+        chat_history: List[Dict[str, str]] = None,
         is_comparison: bool = False,
-    ) -> str:
-        """
-        Generates a conversational response grounded on retrieved document context.
-
-        Supports multi-turn dialogue and structured document comparison tables.
-
-        Args:
-            user_question:        The user's current message.
-            retrieved_chunks:     List of retrieved context chunks from the RAG pipeline.
-            conversation_history: Optional list of recent turns.
-            evidence_level:       Evidence evaluation category from EvidenceGate.
-            is_comparison:        If True, enforces Markdown Comparison Table structure.
-
-        Returns:
-            Generated conversational response with evidence indicator and source citations appended.
-        """
-        self.connect()
-        logger.info(f"Generating conversational response for: '{user_question}' (is_comparison={is_comparison})")
-
-        has_context = bool(retrieved_chunks)
-
-        # Detect comparison mode automatically if chunks originate from multiple docs or query asks for comparison
-        doc_names_in_chunks = {c.get("document_name") for c in retrieved_chunks if c.get("document_name")}
-        query_lower = user_question.lower()
+        document_scope: List[str] = None,
+    ) -> List[Dict[str, str]]:
+        """Constructs system and user messages including history and labeled context blocks."""
+        has_context = bool(context_chunks)
+        doc_names_in_chunks = {c.get("document_name") for c in context_chunks if c.get("document_name")}
+        query_lower = query.lower()
         comparison_keywords = ["compare", "comparison", "versus", "vs ", "difference", "differ", "contrast"]
         should_format_comparison = (
             is_comparison 
@@ -113,11 +94,9 @@ class LLMService:
             or (is_comparison and len(doc_names_in_chunks) >= 2)
         )
 
-        # ── System prompt: conversational + document-grounded ──────────────────
         system_prompt = (
             "You are a friendly, knowledgeable, and conversational AI assistant. "
             "You help users understand and explore their uploaded documents through natural dialogue.\n\n"
-
             "PERSONALITY:\n"
             "- Be warm, clear, and professional — like a smart colleague, not a search engine.\n"
             "- Acknowledge what the user said before answering (e.g. 'Great question!', 'Sure!', 'Absolutely!').\n"
@@ -126,7 +105,6 @@ class LLMService:
             "- Use conversational phrases and vary your sentence structure.\n"
             "- End responses with a natural follow-up invitation when appropriate "
             "(e.g. 'Would you like more details on any of these?', 'Feel free to ask about anything else!').\n\n"
-
             "ANSWERING FROM DOCUMENTS:\n"
             "1. When document context is provided, answer ONLY from that context — do not hallucinate.\n"
             "2. Give COMPLETE, DETAILED answers — never one-word replies.\n"
@@ -156,27 +134,26 @@ class LLMService:
             "Could you clarify, or would you like me to look for something related?'\n"
             "- For casual chitchat (greetings, thanks, etc.) respond naturally and warmly.\n"
             "- Never say you 'cannot' do something — always offer an alternative.\n\n"
-
             "Do NOT generate citations or footnotes — those are added automatically."
         )
 
-        # ── Build the messages list ────────────────────────────────────────────
         messages = [{"role": "system", "content": system_prompt}]
 
-        # Inject recent conversation turns so the model has memory
-        if conversation_history:
-            for turn in conversation_history:
-                prior_q = turn.get("user_question", "").strip()
-                prior_a = turn.get("assistant_answer", "").strip()
-                if prior_q and prior_a:
-                    messages.append({"role": "user",      "content": prior_q})
-                    messages.append({"role": "assistant", "content": prior_a})
+        if chat_history:
+            for turn in chat_history:
+                if "user_question" in turn or "assistant_answer" in turn:
+                    prior_q = turn.get("user_question", "").strip()
+                    prior_a = turn.get("assistant_answer", "").strip()
+                    if prior_q and prior_a:
+                        messages.append({"role": "user", "content": prior_q})
+                        messages.append({"role": "assistant", "content": prior_a})
+                elif turn.get("role") in ("user", "assistant") and turn.get("content"):
+                    messages.append({"role": turn["role"], "content": turn["content"].strip()})
 
-        # Build the current user message with document context attached
         if has_context:
             context_parts = []
-            for i, chunk in enumerate(retrieved_chunks):
-                text     = chunk.get("chunk_text", "").strip()
+            for i, chunk in enumerate(context_chunks):
+                text = chunk.get("chunk_text", "").strip()
                 doc_name = chunk.get("document_name", "unknown")
                 page_num = chunk.get("page_number", 1)
                 if text:
@@ -184,15 +161,46 @@ class LLMService:
                         f"[Context Block {i+1} | {doc_name}, Page {page_num}]\n{text}"
                     )
             context_text = "\n\n".join(context_parts)
-            user_message = (
-                f"Document Context:\n{context_text}\n\n"
-                f"User: {user_question}"
-            )
+            user_message = f"Document Context:\n{context_text}\n\nUser: {query}"
         else:
-            # No relevant chunks found — still respond conversationally
-            user_message = user_question
+            user_message = query
 
         messages.append({"role": "user", "content": user_message})
+        return messages
+
+    def generate_response(
+        self,
+        user_question: str,
+        retrieved_chunks: List[Dict[str, Any]],
+        conversation_history: List[Dict[str, str]] = None,
+        evidence_level: str = "Strong Evidence",
+        is_comparison: bool = False,
+    ) -> str:
+        """
+        Generates a conversational response grounded on retrieved document context.
+
+        Supports multi-turn dialogue and structured document comparison tables.
+
+        Args:
+            user_question:        The user's current message.
+            retrieved_chunks:     List of retrieved context chunks from the RAG pipeline.
+            conversation_history: Optional list of recent turns.
+            evidence_level:       Evidence evaluation category from EvidenceGate.
+            is_comparison:        If True, enforces Markdown Comparison Table structure.
+
+        Returns:
+            Generated conversational response with evidence indicator and source citations appended.
+        """
+        self.connect()
+        logger.info(f"Generating conversational response for: '{user_question}' (is_comparison={is_comparison})")
+
+        has_context = bool(retrieved_chunks)
+        messages = self._build_messages(
+            query=user_question,
+            context_chunks=retrieved_chunks,
+            chat_history=conversation_history,
+            is_comparison=is_comparison,
+        )
 
         try:
             response = self.client.chat.completions.create(

@@ -1,5 +1,7 @@
 import sys
 import os
+
+sys.stdout.reconfigure(encoding='utf-8')
 from unittest.mock import MagicMock, patch
 
 # Append parent directory of scratch so we can import services
@@ -22,14 +24,14 @@ def test_citations_block_generation():
     citations_text = generate_citations_block(chunks)
     print(f"\nGenerated Citations Text:\n{citations_text}")
     
-    # Assert layout structure
-    expected_structure = (
-        "Sources:\n\n"
-        "* contract.pdf (Page 4)\n"
-        "* contract.pdf (Page 7)\n"
-        "* policy.txt (Page 1)"
-    )
-    assert citations_text.strip() == expected_structure.strip(), "Citation block structure or ordering mismatch"
+    # Assert layout structure and ordering
+    assert "🟢 Evidence: Strong" in citations_text, "Evidence badge missing"
+    assert "📄 **contract.pdf** — Page `4`" in citations_text, "contract.pdf page 4 citation missing"
+    assert "📄 **contract.pdf** — Page `7`" in citations_text, "contract.pdf page 7 citation missing"
+    assert "📄 **policy.txt** — Page `1`" in citations_text, "policy.txt page 1 citation missing"
+    # Verify deduplication
+    assert citations_text.count("Page `4`") == 1, "Duplicate page 4 citation not deduplicated"
+    assert citations_text.count("Page `7`") == 1, "Duplicate page 7 citation not deduplicated"
     print("Citations block generation test passed!")
 
 def test_citations_in_response():
@@ -55,14 +57,16 @@ def test_citations_in_response():
         mock_completion_valid.choices = [mock_choice_valid]
         mock_client.chat.completions.create.return_value = mock_completion_valid
         
-        ans_valid = service.generate_response("Question?", retrieved_chunks)
+        ans_valid = service.generate_response("Question?", retrieved_chunks, evidence_level="Strong Evidence")
         print(f"\nResponse Valid:\n{ans_valid}")
         assert "The Transformer is awesome." in ans_valid
         assert "Sources:" in ans_valid
-        assert "attention.pdf (Page 3)" in ans_valid
+        assert "attention.pdf" in ans_valid
+        assert "Page `3`" in ans_valid
+        assert "🟢 Evidence: Strong" in ans_valid
         print("Test Case A (Valid response adds citations) Passed!")
         
-        # Test Case B: Refusal response should NOT attach citations
+        # Test Case B: No retrieved chunks should NOT attach citations
         mock_completion_refuse = MagicMock()
         mock_choice_refuse = MagicMock()
         mock_message_refuse = MagicMock()
@@ -71,7 +75,7 @@ def test_citations_in_response():
         mock_completion_refuse.choices = [mock_choice_refuse]
         mock_client.chat.completions.create.return_value = mock_completion_refuse
         
-        ans_refuse = service.generate_response("Question?", retrieved_chunks)
+        ans_refuse = service.generate_response("Question?", retrieved_chunks=[])
         print(f"\nResponse Refusal:\n{ans_refuse}")
         assert ans_refuse == "I could not find this information in the uploaded documents."
         assert "Sources:" not in ans_refuse
