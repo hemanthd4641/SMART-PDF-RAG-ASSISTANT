@@ -100,3 +100,7 @@ This checklist provides the exact chronological script and action items for reco
   1. *Unify vector and full-text search directly inside Supabase using `pgvector` and PostgreSQL `tsvector`.*
   2. *Add multimodal visual RAG (e.g., Llama 3.2 Vision) for PDF chart and infographic interpretation.*
   3. *Implement streaming token generation in the Streamlit UI.*
+ 
+
+### 9. Demo Video
+- https://drive.google.com/file/d/1tn2kVbFoGOXsV9FFDSwyGhbQrJ6A6K-v/view?usp=sharing
