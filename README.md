@@ -1,69 +1,81 @@
-# 🧠 Smart Multi-Document RAG Assistant
+# Smart PDF/RAG Assistant
 
-A multi-document **Retrieval-Augmented Generation (RAG)** assistant built with Python and Streamlit. The system ingests PDF, DOCX, and TXT documents, extracts structured text and tables, performs OCR on scanned pages when necessary, and provides a hybrid retrieval engine (Dense Vector + Sparse BM25 + Reciprocal Rank Fusion + Cross-Encoder Re-Ranking).
-
-It is designed to answer questions strictly from uploaded documents, provide transparent source attribution, support structured multi-document comparisons, and politely decline to answer when evidence is insufficient.
+A multi-document **Retrieval-Augmented Generation (RAG)** application built in Python with Streamlit. The system ingests PDF, DOCX, and TXT files, extracts structured text and tables, performs OCR on scanned pages when necessary, and combines dense semantic search with sparse lexical search via Reciprocal Rank Fusion (RRF) and Cross-Encoder re-ranking. It provides grounded answers, verifiable page-level source citations, in-app highlighted source previews, multi-document comparison tables, and controlled refusal when evidence is insufficient.
 
 ---
 
-## 1. 🎯 Problem Understanding
+## 1. Problem Understanding
 
-Enterprise and research workflows often require querying information scattered across unstructured documents (handbooks, financial reports, technical policies, and scanned memos). Standard Large Language Models (LLMs) suffer from:
-1. **Hallucinations**: Inventing facts when information is missing from their training data or context.
-2. **Lack of Source Transparency**: Generating answers without verifiable citations to page numbers and passages.
-3. **Retrieval Blind Spots**: Pure vector search often misses exact alphanumeric identifiers (e.g., policy numbers, product codes), while pure keyword search fails at semantic concepts.
-4. **Multi-Document Complexity**: Comparing specific topics across multiple documents requires targeted multi-document scoping and structured synthesis.
+When interacting with complex documents such as company policies, contracts, technical specifications, and financial reports, traditional LLMs and basic RAG setups face several practical challenges:
 
-This application addresses these challenges by implementing a grounded hybrid RAG pipeline with strict context grounding, heuristic evidence gating, and verifiable page-level source citations.
+1. **Hallucination on Missing Facts**: Standard LLMs often invent facts or extrapolate unsupported claims when the required information is absent from the prompt context.
+2. **Lack of Verifiable Grounding**: Answers generated without exact document names, page numbers, and passage previews cannot be easily verified by human reviewers.
+3. **Retrieval Blind Spots**: Pure dense vector search often overlooks exact alphanumeric identifiers (e.g., policy numbers, product codes, section IDs), while pure keyword search fails to capture semantic concepts and natural language paraphrasing.
+4. **Scanned Documents and Tables**: Information contained in scanned image pages or multi-column tabular layouts is frequently lost or distorted by naive plain-text parsers.
+5. **Cross-Document Synthesis**: Comparing terms, conditions, or statistics across multiple files requires targeted document scoping and structured synthesis rather than generic search.
+
+This application provides a document-grounded assistant designed to retrieve relevant evidence accurately, display transparent source references, and decline to answer when sufficient evidence cannot be found.
 
 ---
 
-## 2. ✨ Features
+## 2. Solution Overview
 
-- **Multi-Format Document Ingestion**:
-  - Native text extraction for PDFs via PyMuPDF (`fitz`).
-  - Automatic OCR fallback via EasyOCR for scanned PDF pages (< 20 characters of native text).
-  - Table detection and extraction via `pdfplumber`, formatted as clean Markdown tables.
-  - DOCX parsing via `python-docx` (paragraphs and tables).
+The application is structured as an interactive Streamlit web interface backed by a modular Python RAG pipeline:
+
+- **Ingestion & Processing**: Users upload one or more PDF, DOCX, or TXT documents. Files are validated, checked for duplicate MD5 hashes, parsed (with OCR and table extraction where appropriate), chunked recursively, embedded into 384-dimensional dense vectors, and stored across Pinecone (vectors) and Supabase PostgreSQL (chunks, metadata, chat history).
+- **Interactive Chat**: Users query their indexed documents via a conversational interface. The assistant uses multi-turn memory to support follow-up questions.
+- **Document Scoping & Comparison**: Users can query across the entire document corpus, restrict queries to a specific document using "Ask This Document", or select multiple documents for structured tabular comparisons.
+- **Evidence Gating**: Every retrieval result is evaluated against a 3-tier heuristic evidence gate (🟢 Strong, 🟡 Moderate, 🔴 Insufficient). If relevance scores fall below threshold, the model returns a polite refusal rather than guessing.
+- **Inspector Panel**: A dedicated sidebar panel displays AI-generated document summaries, key topic pills, and an interactive **Source Preview** that reconstructs full page text with retrieved passages highlighted in yellow.
+
+---
+
+## 3. Key Features
+
+- **Multi-Format Ingestion**:
+  - Native text extraction for digital PDFs via PyMuPDF (`fitz`).
+  - Automatic OCR fallback via EasyOCR for scanned/image PDF pages (< 20 characters of native text).
+  - Table extraction via `pdfplumber`, formatting tabular grids into clean Markdown tables.
+  - DOCX parsing via `python-docx` for paragraphs and tables.
   - Plain text (`.txt`) file processing.
-  - Duplicate upload prevention via MD5 content hashing.
+  - Duplicate upload detection using MD5 file hashing.
 - **Advanced Hybrid Retrieval Pipeline**:
-  - **Dense Vector Search**: 384-dimensional embeddings via `sentence-transformers/all-MiniLM-L6-v2` stored in Pinecone Serverless.
-  - **Sparse Keyword Search**: BM25 (`BM25Okapi`) over all chunk texts with tokenization and punctuation stripping.
-  - **Reciprocal Rank Fusion (RRF)**: Combines dense and sparse ranked lists using $RRF(d) = \sum \frac{1}{k + r(d)}$ ($k=60$).
-  - **Cross-Encoder Re-Ranking**: `cross-encoder/ms-marco-MiniLM-L-6-v2` scores query-chunk pairs directly to re-order top candidates.
-  - **Query Expansion**: Groq-powered query rephrasing generating 2 alternate queries with multi-list RRF fusion.
-  - **Near-Duplicate Chunk Filtering**: Jaccard character-trigram overlap filter (default 85% threshold) to minimize context redundancy.
+  - **Dense Vector Search**: 384-dimensional embeddings (`sentence-transformers/all-MiniLM-L6-v2`) in Pinecone Serverless.
+  - **Sparse Keyword Search**: `BM25Okapi` with lowercase normalization, punctuation stripping, and tokenization.
+  - **Reciprocal Rank Fusion (RRF)**: Merges dense and sparse ranked lists using standard $RRF(d) = \sum \frac{1}{k + r(d)}$ with $k=60$.
+  - **Cross-Encoder Re-Ranking**: `cross-encoder/ms-marco-MiniLM-L-6-v2` joint cross-attention scoring over top-20 candidates.
+  - **Query Expansion**: Optional Groq-powered query variant generation (2 variants) with multi-list RRF fusion.
+  - **Near-Duplicate Chunk Filtering**: Jaccard character-trigram overlap filter (default 85% threshold) to reduce context redundancy.
 - **Evidence Gating & Hallucination Mitigation**:
   - Heuristic evidence indicator based on retrieval/reranking scores:
     - 🟢 **Strong Evidence**
     - 🟡 **Moderate Evidence**
     - 🔴 **Insufficient Evidence**
-  - Unknown question refusal: Polite refusal when retrieved context is inadequate or irrelevant.
-- **Transparent Source Attribution & Preview**:
-  - Every answer includes document name and page number references.
-  - Interactive source chunk inspector with similarity/cross-encoder scores.
-  - In-app **Source Preview** tab reconstructing the full page text with retrieved passages highlighted in yellow.
+  - Controlled refusal when retrieved context is inadequate or irrelevant.
+- **Source Attribution & Interactive Highlighting**:
+  - Page-level citations (`📄 document_name.pdf — Page N`) appended to every response.
+  - In-app **Source Preview** tab reconstructing full page text with retrieved snippets highlighted in yellow (`<mark>`).
+  - Retrieval diagnostics expander showing dense/sparse scores, ranks, and chunk types.
 - **Document Interaction & Comparison**:
-  - **"Ask This Document"**: One-click scoping to direct queries to a single document.
-  - **Document Comparison Mode**: Select 2 or more documents to generate comparative tables grounded strictly in retrieved chunks.
-  - **Dynamic Query Suggestions**: Document-specific starter chips based on AI-generated summaries and key topics.
-- **Multi-Turn Conversation Memory**:
-  - Injects recent conversation history (last 6 turns / 3 exchanges) into the prompt context for coherent multi-turn dialogue.
+  - **"Ask This Document"**: One-click filter scoping on document summary cards.
+  - **Document Comparison Mode**: Automatically formats comparative answers into structured Markdown tables across selected documents.
+  - **Dynamic Query Suggestions**: Clickable starter chips generated from document summaries and key topics.
+- **Conversation Memory**:
+  - Sliding window memory maintaining the last 6 conversation turns (3 exchanges) in prompt context.
 - **Cloud Persistence**:
   - Documents, chunk metadata, and chat history persisted in Supabase PostgreSQL.
 
 ---
 
-## 3. 🏗️ Architecture & Data Flow
+## 4. Architecture
 
 ```mermaid
 flowchart TD
-    User([User]) --> UI[Streamlit Web UI]
+    User([User]) --> UI[Streamlit Web Interface]
 
     subgraph Ingestion ["Document Processing & Ingestion"]
-        UI -->|Upload PDF / DOCX / TXT| Val[File Validation & MD5 Deduplication]
-        Val --> Router{Format?}
+        UI -->|Upload PDF / DOCX / TXT| Val[File Validation & MD5 Duplicate Check]
+        Val --> Router{File Format?}
         Router -->|PDF| ParserPDF[PyMuPDF Native Text Parser]
         Router -->|DOCX| ParserDOCX[python-docx Parser]
         Router -->|TXT| ParserTXT[Python Text Reader]
@@ -73,7 +85,7 @@ flowchart TD
         OCRCheck -->|No| Plumber[pdfplumber Table Extractor]
         OCR --> Plumber
         
-        Plumber --> Summary[Groq LLM Auto-Summary & Key Topics]
+        Plumber --> Summary[Groq LLM: Auto-Summary & Key Topics JSON]
         ParserDOCX --> Summary
         ParserTXT --> Summary
         
@@ -91,15 +103,15 @@ flowchart TD
         Expand --> SearchExec
         SingleQ --> SearchExec
 
-        subgraph SearchExec ["Parallel Search & Fusion"]
-            Dense[Dense Search: Pinecone Vector Cosine]
-            Sparse[Sparse Search: BM25 Keyword Search]
+        subgraph SearchExec ["Parallel Search Execution"]
+            Dense[Dense Search: Pinecone Cosine Similarity]
+            Sparse[Sparse Search: BM25 Keyword Scoring]
         end
 
         SearchExec --> RRF[Reciprocal Rank Fusion\nRRF k=60]
-        RerankCheck{Re-ranking\nEnabled?}
+        RRF --> RerankCheck{Re-ranking\nEnabled?}
         RerankCheck -->|Yes| CrossEncoder[Cross-Encoder ms-marco-MiniLM\nScore Query-Chunk Pairs]
-        RerankCheck -->|No| TopRRF[Top Candidates by RRF]
+        RerankCheck -->|No| TopRRF[Top Candidates by RRF Score]
         CrossEncoder --> DedupCheck{Deduplication\nEnabled?}
         TopRRF --> DedupCheck
         DedupCheck -->|Yes| Dedup[Jaccard Trigram Deduplication\nDrop >= 85% Overlap]
@@ -107,8 +119,8 @@ flowchart TD
         Dedup --> FinalChunks
     end
 
-    subgraph Generation ["Evidence Gate & Generation"]
-        FinalChunks --> Gate{Evidence Gate\nCheck Score Thresholds}
+    subgraph Generation ["Evidence Gate & Response Generation"]
+        FinalChunks --> Gate{Evidence Gate\nEvaluate Score Thresholds}
         Gate -->|Score < Threshold / Empty| Refusal[🔴 Insufficient Evidence\nPolite Refusal: No Hallucination]
         Gate -->|Score >= Threshold| ContextPrep[Context Assembly with Document & Page Labels]
         ContextPrep --> Memory[Inject Last 6 Conversation Turns]
@@ -124,209 +136,213 @@ flowchart TD
 
 ---
 
-## 4. 💡 Technology Choices and WHY
+## 5. RAG Pipeline
 
-| Component | Technology | Rationale & Tradeoffs |
-|---|---|---|
-| **UI Framework** | **Streamlit** | Fast interactive prototyping, built-in chat components, quick reactive session state management for multi-turn chat and preview highlights. |
-| **LLM Inference** | **Groq (Llama 3.3 70B Versatile)** | Extremely low latency inference (typically >200 tokens/sec) enabling responsive multi-query expansion, summarization, and RAG synthesis on a high-capability 70B open model. |
-| **Dense Vector DB** | **Pinecone (Serverless)** | Managed serverless vector index with low-latency cosine similarity, native metadata filtering (`$eq`, `$in`), and zero maintenance overhead. |
-| **Relational Database** | **Supabase (PostgreSQL)** | Robust cloud PostgreSQL database to store structured document metadata, chunk text, full page text for highlighting, and chat conversation history. |
-| **Embedding Model** | **`all-MiniLM-L6-v2`** | Lightweight (80MB), fast CPU inference, 384-dimensional dense vectors with strong performance on retrieval benchmarks. |
-| **Sparse Keyword Search** | **`rank-bm25` (BM25Okapi)** | Complements dense retrieval by accurately matching exact keywords, alphanumeric codes, acronyms, and product IDs that dense embeddings may overlook. |
-| **Re-Ranker** | **`cross-encoder/ms-marco-MiniLM-L-6-v2`** | Jointly evaluates `(query, chunk)` cross-attention to resolve semantic nuance and keyword stuffing, significantly outperforming bi-encoder cosine ranking. |
-| **PDF Parsing** | **PyMuPDF (`fitz`) + `pdfplumber`** | PyMuPDF provides fast native text extraction; `pdfplumber` performs accurate tabular structure extraction to preserve table schemas in Markdown. |
-| **OCR Fallback** | **EasyOCR** | Pure Python/PyTorch OCR solution that automatically activates when scanned or image-only PDF pages are detected (< 20 native text characters). |
-| **DOCX Parsing** | **`python-docx`** | Reliable extraction of structured paragraphs and row-major tabular data from Microsoft Word documents. |
+The end-to-end data flow operates through eleven stages:
 
----
-
-## 5. 🔄 Detailed RAG Pipeline
-
-1. **Document Validation & Ingestion**:
-   - Files are validated against an extension allowlist (`.pdf`, `.docx`, `.txt`) and a 50MB file size limit.
-   - An MD5 hash of the raw file content is computed. If the hash matches an existing document in Supabase, the upload is skipped to prevent duplicate vector indexing.
-2. **Text & Table Extraction**:
-   - For PDFs, PyMuPDF extracts native text per page. If a page yields fewer than 20 characters, EasyOCR renders the page at 150 DPI and extracts text via optical character recognition.
-   - `pdfplumber` extracts tables and converts them to formatted Markdown tables tagged as `table` chunks.
-   - For DOCX, paragraphs and tables are extracted in document order.
-3. **Chunking**:
-   - Text is split using a recursive character text splitter with `chunk_size = 500` characters and `overlap = 100` characters.
-   - Table chunks are preserved intact to prevent breaking rows across chunks.
-   - Chunks receive deterministic IDs: `{doc_name}#page_{N}#text_chunk_{i}`.
-4. **Vector Embedding & Indexing**:
-   - `sentence-transformers/all-MiniLM-L6-v2` encodes text chunks in batches of 32 into 384-dimensional vectors.
-   - Vectors are upserted to Pinecone with metadata (`document_name`, `document_id`, `page_number`, `chunk_type`, `chunk_text`).
-   - Document metadata and raw chunks are saved in Supabase PostgreSQL.
-   - The BM25 index is updated in-memory.
+1. **Document Ingestion**: Files are uploaded through Streamlit, validated against extension allowlists (`.pdf`, `.docx`, `.txt`) and a 50MB size limit, and checked for duplicate MD5 hashes.
+2. **Text & Table Extraction / OCR**:
+   - Digital PDFs are parsed with PyMuPDF. If a page yields under 20 characters of text, EasyOCR renders the page as a 150 DPI image and extracts text.
+   - `pdfplumber` detects and formats tabular structures as Markdown tables.
+   - DOCX files are extracted via `python-docx` (paragraphs and row-major tables).
+3. **Document Summarization**: Groq LLM generates an abstractive 2–3 sentence summary and 3–6 key topics formatted as JSON.
+4. **Chunking**: Text is split using `RecursiveTextSplitter` (`chunk_size = 500`, `overlap = 100`). Table blocks are preserved intact as dedicated `table` chunks.
+5. **Embeddings & Vector Indexing**: `all-MiniLM-L6-v2` encodes text chunks into 384-dimensional dense vectors, upserted to Pinecone with chunk metadata.
+6. **Relational Storage & BM25 Indexing**: Raw chunk texts and page mappings are stored in Supabase PostgreSQL; the in-memory BM25 index is updated.
+7. **Hybrid Retrieval**: Queries execute dense vector search on Pinecone and sparse keyword search on BM25 concurrently (with optional document filters).
+8. **Reciprocal Rank Fusion (RRF)**: Dense and sparse ranked lists are combined using RRF scoring ($k=60$).
+9. **Cross-Encoder Re-Ranking & Deduplication**: Top-20 candidates are re-scored via `ms-marco-MiniLM-L-6-v2`, and near-duplicate chunks ($\ge 85\%$ Jaccard trigram overlap) are removed.
+10. **Evidence Validation (Evidence Gate)**: Top scores are evaluated. If below threshold, generation is bypassed in favor of a controlled refusal.
+11. **LLM Generation & Citations**: Groq (Llama 3.3 70B) generates a grounded conversational answer or comparison table, and deduplicated source citations (`📄 doc — Page N`) are appended.
 
 ---
 
-## 6. 🔀 Hybrid Retrieval
+## 6. Retrieval Strategy
 
-Pure dense retrieval can fail when queries involve exact numbers, acronyms, or rare terms. Pure sparse retrieval (BM25) fails when queries use synonyms or natural language paraphrases.
+The retrieval architecture combines multiple complementary search methodologies:
 
-This assistant implements **Hybrid Retrieval**:
-1. When a user asks a question, the query is embedded and sent to Pinecone for dense cosine similarity search (fetching top candidates).
-2. Concurrently, the tokenized query is scored against the BM25 index over all Supabase chunks.
-3. If document filtering is active, metadata filters (`$in` / `$eq`) are applied simultaneously to both Pinecone and BM25.
-4. The ranked result sets are fused using **Reciprocal Rank Fusion (RRF)**.
+### Semantic / Dense Retrieval (Pinecone + MiniLM)
+- **Purpose**: Understands conceptual meaning, synonyms, and natural language paraphrasing (e.g., matching *"time off policies"* to *"annual leave entitlement"*).
+- **Mechanism**: Encodes the query into a 384-dimensional dense vector and calculates cosine similarity across Pinecone vector indices.
 
----
+### Sparse Lexical Retrieval (BM25)
+- **Purpose**: Accurately matches exact keywords, numeric values, acronyms, and product/policy identifiers (e.g., *"INV-2024-8891"*, *"Section 4.2"*, *"HIPAA"*) that dense embeddings may compress or overlook.
+- **Mechanism**: Implements `BM25Okapi` over normalized tokens with punctuation stripping.
 
-## 7. 📖 BM25 Implementation
+### Reciprocal Rank Fusion (RRF)
+- **Purpose**: Merges dense and sparse result lists without requiring score normalization across differing scales (cosine $[-1, 1]$ vs. unbounded BM25 scores).
+- **Formula**:
+  $$RRF\_Score(d) = \sum_{m \in M} \frac{1}{k + r_m(d)}$$
+  where $k=60$ and $r_m(d)$ is the 1-based rank in retrieval pass $m$. Documents ranking high in both dense and sparse passes receive the highest cumulative score.
 
-- Implemented using `rank_bm25.BM25Okapi`.
-- Index is constructed from all chunks currently stored in Supabase.
-- Tokenization converts text to lowercase, removes punctuation, and splits on whitespace.
-- Supports scoped filtering: if specific documents are selected in the UI, BM25 filters candidates before ranking.
-
----
-
-## 8. 🧮 Reciprocal Rank Fusion (RRF)
-
-Reciprocal Rank Fusion merges multiple ranked lists without requiring score normalization:
-
-$$RRF\_Score(d) = \sum_{m \in M} \frac{1}{k + r_m(d)}$$
-
-- $M$: The set of retrieval passes (e.g., Dense pass, BM25 pass, or expanded query passes).
-- $r_m(d)$: The 1-based rank of document chunk $d$ in retrieval list $m$.
-- $k$: Smoothing constant, set to $60$ (standard industry baseline).
-
-RRF guarantees that documents appearing near the top of both dense and sparse lists receive the highest combined priority.
+### Cross-Encoder Re-Ranking
+- **Purpose**: Bi-encoders embed queries and documents independently, losing fine-grained cross-attention interactions. The Cross-Encoder (`ms-marco-MiniLM-L-6-v2`) jointly processes `(query, document)` pairs, capturing deep token-level interactions to accurately re-order the top-20 candidates before passing the top-5 to the LLM.
 
 ---
 
-## 9. 🎯 Cross-Encoder Re-Ranking
+## 7. Hallucination Mitigation
 
-- **Model**: `cross-encoder/ms-marco-MiniLM-L-6-v2`.
-- **Process**:
-  - The hybrid RRF step retrieves an expanded candidate pool (top 20 chunks).
-  - The cross-encoder takes `(query, chunk_text)` pairs and computes a joint cross-attention relevance score for each pair.
-  - Candidates are re-sorted by cross-encoder score in descending order, and the top 5 highest-scoring chunks are retained for context assembly.
-- Can be toggled on/off in the sidebar.
+The system implements a four-tiered defense against hallucinations:
 
----
-
-## 10. ⚡ Query Expansion
-
-- When enabled via the sidebar toggle, the user's query is sent to Groq (`llama-3.3-70b-versatile`) with instructions to produce 2 alternative search phrasings in JSON format.
-- The system executes dense and sparse searches for all 3 queries (original + 2 variants).
-- All 6 resulting lists are fused via multi-list Reciprocal Rank Fusion, capturing different vocabulary formulations of the same intent.
-- If the LLM call fails or times out, the system cleanly falls back to the original query.
+1. **Evidence Gating**:
+   - The `EvidenceGate` inspects top retrieval and cross-encoder scores before invoking the generation LLM.
+   - If relevance scores are below minimum thresholds or if no chunks match the query, the LLM generation step is bypassed, and a standardized refusal is returned:
+     > **🔴 Evidence: Insufficient**  
+     > *I couldn't find enough relevant information in the uploaded documents to answer this reliably.*
+2. **Strict System Prompt Constraints**:
+   - System prompts explicitly direct Llama 3.3 to answer **ONLY** from the injected context blocks and state when facts are missing.
+3. **Labeled Context Blocks**:
+   - Each retrieved chunk is demarcated in the prompt: `[Context Block N | document_name.pdf, Page X]`, enabling the model to attribute facts directly to specific source blocks.
+4. **Low Temperature & Near-Duplicate Filtering**:
+   - `temperature = 0.4` reduces creative drift, while Jaccard trigram deduplication prevents repetitive chunks from crowding out relevant evidence.
 
 ---
 
-## 11. 🛡️ Hallucination Mitigation
+## 8. Source Attribution
 
-Hallucinations are prevented through a multi-tier defense:
-1. **Strict Grounding System Prompt**:
-   - The LLM is explicitly instructed to answer **ONLY** using the provided context blocks.
-   - If the context does not contain sufficient facts to answer the question, the model is instructed to state that the information is unavailable.
-2. **Context Block Demarcation**:
-   - Context is injected into the LLM prompt with explicit labels:
-     `[Context Block N | document_name.pdf, Page X (Score: Y.YY)]`
-3. **Temperature Tuning**:
-   - `temperature = 0.4` is used to balance conversational fluidity with deterministic adherence to context.
-4. **Near-Duplicate Chunk Filtering**:
-   - Jaccard trigram overlap filtering drops redundant chunks, preventing repeated text from crowding out diverse evidence.
+Transparency is maintained through multi-level source attribution:
 
----
-
-## 12. 🚪 Evidence Gate
-
-To provide transparency into answer groundedness, the system computes a heuristic evidence level based on the retrieval and reranker scores of the top chunks:
-
-| Evidence Level | Badge | Condition |
-|---|---|---|
-| **Strong** | 🟢 Evidence: Strong | Cross-encoder score $\ge 0.5$ or top cosine similarity $\ge 0.70$ |
-| **Moderate** | 🟡 Evidence: Moderate | Cross-encoder score $\ge 0.0$ or top cosine similarity $\ge 0.45$ |
-| **Insufficient** | 🔴 Insufficient Evidence | Top score below threshold or empty candidate set |
-
-> **Note on Calibration**: The evidence indicator is a **heuristic scoring threshold**, not a mathematically calibrated Bayesian probability distribution. It provides an operational signal of retrieval confidence.
+- **Evidence Badge**: Every answer displays an indicator:
+  - 🟢 **Evidence: Strong** (High cross-encoder/cosine score)
+  - 🟡 **Evidence: Moderate** (Acceptable relevance score)
+  - 🔴 **Evidence: Insufficient** (Low relevance score; refusal triggered)
+- **Inline Citations**: Deduplicated list of sources appended to every answer:
+  ```text
+  📄 employee_handbook.pdf — Page 4
+  📄 leave_policy.pdf — Page 2
+  ```
+- **In-App Source Preview Tab**: In the Inspector Panel, users can select any cited document and page. The application fetches the page text from Supabase and wraps the retrieved passage in `<mark style="background-color: #fef08a">` for immediate visual verification.
+- **Retrieval Diagnostics**: A collapsible expander beneath each answer shows chunk IDs, retrieval scores, dense/sparse breakdown, and chunk types (`text` vs. `table`).
 
 ---
 
-## 13. ❓ Unknown Question Handling
+## 9. Multi-Document Reasoning
 
-When a user asks a question about information not present in the uploaded documents, the retrieval scores fall below the minimum evidence threshold, triggering the **Unknown Question Refusal**:
+The assistant natively handles reasoning across multiple documents:
 
-### Example Walkthrough:
-
-**User Question:**
-> *"What is the company's current stock price?"*
-
-**System Response:**
-> 🔴 **Insufficient Evidence**
-> 
-> *I couldn't find enough relevant information in the uploaded documents to answer this reliably. Could you clarify, or would you like me to look for something related in your uploaded files?*
-
-The system avoids hallucinating market data, company financials, or speculative facts when no supporting text exists in the indexed documents.
-
----
-
-## 14. 📎 Source Attribution & Highlighting
-
-Every generated answer that passes the evidence gate includes clear citations:
-
-```text
-Employees receive 24 days of annual leave per calendar year.
-
-🟢 Evidence: Strong
-
-Sources:
-📄 employee_handbook.pdf — Page 4
-📄 leave_policy.pdf — Page 2
-```
-
-### In-App Source Preview:
-- In the **Inspector Panel** → **Source Preview** tab, users can select any cited document and page.
-- The app reconstructs the page text and highlights the exact retrieved chunk in yellow (`<mark style="background-color: #fef08a">`).
-
----
-
-## 15. 🧠 Conversation Memory
-
-- The chat interface maintains multi-turn conversation context.
-- The last **6 turns** (3 user questions and 3 assistant answers) are formatted and prepended to the LLM prompt.
-- This allows follow-up questions such as *"Can you explain the second point in more detail?"* without repeating previous context.
-- Users can reset memory at any time using the **Clear Chat History** button in the sidebar.
-
----
-
-## 16. 📊 Document Comparison
-
-The assistant supports comparative analysis across multiple documents:
-
-1. **Selection**: Users select two or more documents via the multi-select filter in the chat header.
-2. **Comparison Query**: Users ask a comparative question (e.g., *"Compare the annual leave and probation policies between these documents"*).
-3. **Retrieval**: Hybrid retrieval gathers relevant chunks scoped to all selected documents.
-4. **Structured Output**: The LLM synthesizes the findings into a structured comparison table:
+1. **Corpus-Wide Retrieval**: By default, queries retrieve evidence across all uploaded files.
+2. **Targeted Scoping**: Users can select one or more specific documents via the multiselect filter or the "Ask This Document" button, applying metadata filters (`$eq` / `$in`) to both Pinecone and BM25.
+3. **Structured Document Comparison**: When multiple documents are selected and a comparative question is asked (e.g., *"Compare the annual leave and probation policies in these documents"*), the system:
+   - Retrieves relevant chunks across the selected files.
+   - Prompts the LLM to structure the answer as a **Markdown Comparison Table**:
 
 | Topic | Employee Handbook.pdf | Contractor Agreement.pdf |
 |---|---|---|
 | **Annual Leave** | 24 days paid leave (Page 4) | Not eligible for paid leave (Page 2) |
-| **Probation Period** | 3 months with review (Page 1) | No probation period (Page 1) |
+| **Probation Period** | 3 months with formal review (Page 1) | No probation period (Page 1) |
 | **Notice Period** | 30 days written notice (Page 8) | 14 days written notice (Page 3) |
-
-Every cell in the comparison is grounded in retrieved chunks, and the evidence gate prevents fabricating missing comparison dimensions.
 
 ---
 
-## 17. ⚙️ Setup & Installation
+## 10. Conversation Memory
+
+- The chat interface maintains multi-turn conversation context across interactions.
+- The last **6 turns** (3 user questions and 3 assistant answers) are formatted and passed into the Groq message history.
+- This allows natural follow-up queries (e.g., *"What about for part-time employees?"* or *"Can you summarize the second point?"*) without restating prior context.
+- Users can reset memory at any time using the **Clear Chat History** button in the sidebar.
+
+---
+
+## 11. Creative Feature: Interactive Yellow Source Highlighting & In-App Page Reconstruction
+
+The standout creative feature of this assistant is the **Interactive Source Preview with In-App Passage Highlighting**:
+
+- **The Problem**: Standard RAG chatbots output raw text answers with plain file names, requiring users to manually open separate PDF viewers and search for cited passages.
+- **The Solution**: 
+  1. During ingestion, full page text layers and table grids are stored in Supabase mapped by document ID and page number.
+  2. When an answer cites a document and page, the user can navigate to the **Source Preview** tab in the Inspector Panel.
+  3. The system reconstructs the page text and programmatically locates the exact retrieved chunk snippet, wrapping it in an accessible HTML `<mark style="background-color: #fef08a; padding: 2px 4px; border-radius: 3px; font-weight: 500;">` element.
+  4. Users can instantly verify the exact surrounding context and ensure the LLM did not quote out of context.
+
+---
+
+## 12. Technology Choices and Why
+
+| Technology | Role | Why Chosen |
+|---|---|---|
+| **Streamlit** | UI Framework | Rapid, reactive Python web UI; built-in chat components, state management for tabs and multiselect filters. |
+| **Groq (Llama 3.3 70B Versatile)** | LLM Inference | Ultra-low inference latency (>200 tokens/sec), allowing fast query expansion, JSON document summarization, and responsive RAG generation on a capable 70B open-weights model. |
+| **Pinecone (Serverless)** | Vector Database | Managed cloud vector database with low-latency cosine similarity search and native metadata filtering (`$eq`, `$in`) without local infrastructure overhead. |
+| **Supabase (PostgreSQL)** | Relational DB | Cloud PostgreSQL persistence for document metadata, full chunk text, and chat history with foreign-key cascade deletion. |
+| **`all-MiniLM-L6-v2`** | Dense Embeddings | Lightweight (80MB), fast CPU inference, 384-dimensional dense vectors with proven retrieval performance. |
+| **`rank-bm25` (BM25Okapi)** | Sparse Search | Pure Python implementation of BM25 probabilistic scoring to capture exact terms, codes, and acronyms that vector search misses. |
+| **`cross-encoder/ms-marco-MiniLM-L-6-v2`** | Re-Ranker | Joint query-chunk cross-attention model that significantly refines candidate ranking over bi-encoder cosine similarity. |
+| **PyMuPDF (`fitz`) + `pdfplumber`** | PDF & Table Extraction | PyMuPDF provides fast native text extraction; `pdfplumber` accurately preserves tabular structures as Markdown. |
+| **EasyOCR** | OCR Fallback | Standalone PyTorch-based OCR engine that automatically activates when scanned or image-based PDF pages are detected. |
+| **`python-docx`** | DOCX Parser | Reliable parsing of Microsoft Word document paragraphs and tables. |
+
+---
+
+## 13. Project Structure
+
+```text
+SMART-PDF-RAG-ASSISTANT/
+├── app.py                          # Streamlit application entrypoint & layout
+├── requirements.txt                # Python package dependencies
+├── .env.example                    # Environment variable template
+├── .gitignore                      # Git ignore configuration
+├── README.md                       # Project documentation
+│
+├── components/                     # Streamlit UI modules
+│   ├── chat.py                     # Chat interface, doc scope selector, suggestions
+│   ├── sidebar.py                  # Settings, toggles, inspector tabs, preview
+│   └── upload.py                   # File upload, validation, ingestion pipeline
+│
+├── services/                       # Core RAG engine modules
+│   ├── parser.py                   # Document parsing dispatcher (PDF, TXT, OCR)
+│   ├── docx_parser.py              # DOCX text and table extractor
+│   ├── chunker.py                  # Recursive character text splitter & table chunker
+│   ├── embeddings.py               # SentenceTransformer lazy-loader & batch encoder
+│   ├── pinecone_store.py           # Pinecone vector upsert, query, and deletion
+│   ├── bm25_retriever.py           # BM25Okapi keyword index & retrieval
+│   ├── hybrid_retriever.py         # Reciprocal Rank Fusion (RRF) implementation
+│   ├── reranker.py                 # Cross-Encoder joint scoring & re-ranking
+│   ├── retriever.py                # Main retrieval coordinator (dense + sparse + rerank + dedup)
+│   ├── evidence_gate.py            # 3-tier heuristic evidence validation & gate
+│   ├── deduplicator.py             # Jaccard trigram near-duplicate chunk filter
+│   ├── query_expander.py           # Groq-powered multi-query generator
+│   ├── llm.py                      # Groq chat completion & citation generator
+│   └── ocr.py                      # EasyOCR image text extraction singleton
+│
+├── database/                       # Relational database layer
+│   ├── database.py                 # Supabase CRUD operations (docs, chunks, history)
+│   ├── supabase_client.py          # Supabase client singleton
+│   └── schema.sql                  # PostgreSQL table definitions
+│
+├── utils/                          # Configuration & helpers
+│   ├── config.py                   # Environment variable loader & constants
+│   └── helpers.py                  # Logging factory, timing decorator, formatters
+│
+├── data/                           # Sample test documents
+│   ├── test_company.pdf            # Pre-packaged sample PDF for evaluation
+│   └── .gitkeep
+│
+└── scratch/                        # Automated test suites
+    ├── test_assessment_readiness.py # 9 end-to-end evaluation scenarios
+    ├── test_reliability.py         # 30-assertion reliability & error handling suite
+    ├── test_comparison.py          # Document comparison formatting & gating tests
+    ├── test_docx.py                # DOCX parser & chunker integration tests
+    ├── test_chunker.py             # Recursive splitter boundary & overlap tests
+    ├── test_citations.py           # Citation block formatting & deduplication tests
+    └── test_hybrid.py              # BM25 tokenization & RRF fusion tests
+```
+
+---
+
+## 14. Setup
 
 ### Prerequisites
 - Python 3.10 to 3.12
 - Git
 
-### 1. Clone the Repository
+### Step-by-Step Installation
+
 ```bash
+# 1. Clone repository
 git clone https://github.com/hemanthd4641/SMART-PDF-RAG-ASSISTANT.git
 cd SMART-PDF-RAG-ASSISTANT
-```
 
-### 2. Create and Activate Virtual Environment
-```bash
+# 2. Create and activate virtual environment
 # Windows (PowerShell):
 python -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -334,132 +350,143 @@ python -m venv venv
 # macOS / Linux:
 python3 -m venv venv
 source venv/bin/activate
-```
 
-### 3. Install Dependencies
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
 ```
 
 ---
 
-## 18. 🔑 Environment Variables
+## 15. Environment Variables
 
-Create a `.env` file in the project root (or copy `.env.example`):
+Copy `.env.example` to create your local `.env` file:
 
 ```bash
 cp .env.example .env
 ```
 
-Configure the following variables:
+Fill in the required configuration keys:
 
 ```env
-# Groq LLM API Key (https://console.groq.com)
-GROQ_API_KEY=gsk_your_groq_api_key
+# Groq LLM API Configuration (Get key at: https://console.groq.com)
+GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.3-70b-versatile
 
-# Pinecone Vector DB (https://app.pinecone.io)
-PINECONE_API_KEY=pcsk_your_pinecone_api_key
+# Pinecone Vector DB Configuration (Get key at: https://app.pinecone.io)
+PINECONE_API_KEY=your_pinecone_api_key_here
 PINECONE_INDEX_NAME=rag-assistant-index
+PINECONE_ENV=us-west1-gcp-free
 
-# Supabase Cloud Database (https://supabase.com)
+# Database Configuration (Supabase PostgreSQL - Get keys at: https://supabase.com)
 SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_KEY=your_supabase_anon_public_key
+SUPABASE_KEY=your_supabase_anon_public_key_here
 
-# Embedding & Runtime Configuration
+# Dense Embedding Model
 EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
+
+# Application Runtime Configuration
 PORT=8501
 DEBUG=True
 ```
 
 ### Database Schema Setup (Supabase)
-Run the SQL script located in `database/schema.sql` in your Supabase SQL Editor to create the `documents`, `chunks`, and `chat_history` tables.
+Open the **SQL Editor** in your Supabase dashboard, paste the contents of `database/schema.sql`, and click **Run** to provision the `documents`, `chunks`, and `chat_history` tables.
 
 ---
 
-## 19. 🚀 Running the Application
+## 16. Running the Application
 
-Start the Streamlit application:
+Launch the Streamlit app:
 
 ```bash
 streamlit run app.py
 ```
 
-Open your browser at `http://localhost:8501`.
+Open your web browser at `http://localhost:8501`.
 
-> **Demo Mode**: If API keys are not provided, the application will launch in a safe Demo Mode with sample responses, allowing you to preview the UI layout without crashing.
+> **Demo Mode**: If API keys are not configured, the app launches in Demo Mode with mock responses and simulated citations, allowing full UI evaluation without credentials.
 
 ---
 
-## 20. 🧪 Testing & Verification
+## 17. Testing
 
-The project includes test scripts in `scratch/` to verify each component independently:
+The repository contains automated test scripts in `scratch/`. All test suites run locally and execute real assertions:
 
 ```bash
-# Run reliability and error-handling test suite (30 assertions)
+# Run the 9 assessment evaluation scenarios
+python scratch/test_assessment_readiness.py
+
+# Run the 30-assertion reliability and error-handling suite
 python scratch/test_reliability.py
 
-# Verify document parsers (PDF, DOCX, TXT)
-python scratch/test_parser.py
-python scratch/test_docx.py
+# Run document comparison & citation tests
+python scratch/test_comparison.py
+python scratch/test_citations.py
 
-# Verify text chunker & table preservation
+# Run parser and chunker test suites
+python scratch/test_docx.py
 python scratch/test_chunker.py
 
-# Verify hybrid retrieval & RRF
+# Run hybrid retrieval & RRF fusion tests
 python scratch/test_hybrid.py
-
-# Verify cross-encoder re-ranking
-python scratch/test_reranker.py
-
-# Verify Groq LLM integration & citations
-python scratch/test_llm.py
-python scratch/test_citations.py
 ```
 
----
-
-## 21. ⚠️ Known Limitations
-
-1. **OCR Performance & Latency**: EasyOCR runs on CPU by default. Processing complex or multi-page scanned PDFs can take several seconds per page.
-2. **In-Memory BM25 Index**: The BM25 index is built and held in application memory from Supabase chunks. For datasets exceeding hundreds of thousands of chunks, an external full-text search index (such as PostgreSQL `tsvector` or Elasticsearch) would be required.
-3. **Re-Ranking Latency**: The Cross-Encoder model runs on CPU, adding ~200–500ms of latency per query when scoring top-20 candidates.
-4. **Heuristic Evidence Score**: The evidence gate relies on similarity and cross-encoder score thresholds rather than a formal statistical calibration method.
-5. **No Native Image/Chart Reasoning**: The system extracts text and table structures but does not currently perform multimodal visual reasoning over embedded charts or complex diagrams.
+### Test Verification Status
+- **`test_assessment_readiness.py`**: **9/9 PASSED** (Answerable Q&A, Unrelated Refusal, Cross-Doc Retrieval, Follow-up Memory, Document Scope Filter, MD5 Duplicate Guard, Corrupted File Errors, Source Highlighting, Comparison Grounding).
+- **`test_reliability.py`**: **30/30 PASSED** (Empty file guards, whitespace validation, metadata fallback, .env isolation, secret leak checks).
+- **`test_comparison.py`**: **4/4 PASSED**.
+- **`test_docx.py`**: **4/4 PASSED**.
 
 ---
 
-## 22. 🤖 AI Tools Used
+## 18. Sample Documents
 
-In compliance with assessment transparency guidelines, the following AI tools assisted development:
+A pre-packaged test PDF is included in the repository:
+- **Path**: `data/test_company.pdf`
+- **Contents**: A multi-section document covering company overview, organizational structure, leave policies, and working hours.
+- **How to Use**: Upload `data/test_company.pdf` via the sidebar uploader to test ingestion, summary extraction, question answering, and yellow source preview highlighting.
+
+---
+
+## 19. Known Limitations
+
+1. **In-Memory BM25 Index**: The BM25 keyword index is built and held in application memory from Supabase chunks. For corpora exceeding hundreds of thousands of chunks, an external search index (such as PostgreSQL `tsvector` or Elasticsearch) would be required.
+2. **CPU Inference Latency**: Cross-Encoder re-ranking and EasyOCR run on CPU by default. Re-ranking adds ~200–500ms per query, and OCR on scanned pages takes several seconds per page.
+3. **Heuristic Evidence Gate**: The evidence gate relies on empirical similarity and cross-encoder score thresholds rather than a formal Bayesian confidence distribution.
+4. **No Multimodal Chart Understanding**: While tabular grids are extracted as Markdown tables, embedded visual diagrams and complex infographics are not parsed by the text-based extraction pipeline.
+
+---
+
+## 20. Future Improvements
+
+1. **Database-Level Hybrid Search**: Implement `pgvector` and PostgreSQL `tsvector` directly in Supabase for unified database-level hybrid search.
+2. **Multimodal Visual RAG**: Integrate vision models (e.g., Llama 3.2 Vision) to interpret charts, architecture diagrams, and infographics embedded within PDFs.
+3. **Streaming Responses**: Stream LLM output tokens directly to the Streamlit chat UI for lower perceived latency.
+4. **PDF Canvas Bounding Boxes**: Render visual bounding box rectangles directly on the PDF page canvas for cited passages.
+
+---
+
+## 21. AI Tools Used
+
+In compliance with assessment transparency guidelines, the following AI tools assisted during development:
 
 - **Claude / Gemini / ChatGPT**:
   - Architecture design for the multi-stage hybrid RRF pipeline and cross-encoder re-ranking.
-  - Drafting unit test assertions in `scratch/` for parser edge cases, chunk boundary testing, and schema migrations.
-  - Prompt engineering for strict context grounding and JSON-mode document summary extraction.
+  - Drafting test assertions in `scratch/` for parser edge cases, chunk boundary testing, and schema migrations.
+  - Formulating system prompts for strict document grounding and JSON-mode summary extraction.
 - **GitHub Copilot / Antigravity IDE**:
   - Code completion for Streamlit layout components, PyMuPDF extraction routines, and Supabase client calls.
 
 ---
 
-## 23. ⏱️ Development Time Log
+## 22. Development Time
 
-| Phase | Time Spent | Tasks Completed |
+| Phase | Estimated Time | Tasks Completed |
 |---|---|---|
-| **Architecture & Pipeline Design** | 0.5 Hours | Requirements analysis, RAG architecture formulation, RRF fusion formulas, technology stack selection. |
-| **Document Processing & Ingestion** | 2.0 Hours | PyMuPDF text parser, EasyOCR fallback, `pdfplumber` table extraction, `python-docx` parser, chunker with table preservation. |
-| **Vector Indexing & Hybrid Retrieval** | 2.0 Hours | Pinecone serverless integration, BM25 indexing, Reciprocal Rank Fusion, Cross-Encoder re-ranking, query expansion. |
-| **Generation, Evidence Gate & Comparison** | 1.5 Hours | Groq Llama 3.3 integration, heuristic evidence gate, source citation formatter, yellow passage preview, multi-document comparison mode. |
-| **Reliability, Security & Testing** | 1.0 Hours | Error handling pass, environment variable validation, 30 automated reliability tests in `scratch/test_reliability.py`. |
-| **Documentation & Walkthrough** | 1.0 Hours | Comprehensive README.md authoring, Mermaid data flow diagrams, setup documentation. |
+| **1. Architecture & Pipeline Design** | 0.5 Hours | Requirements analysis, RAG architecture formulation, RRF fusion formulas, technology stack selection. |
+| **2. Document Processing & Ingestion** | 2.0 Hours | PyMuPDF text parser, EasyOCR fallback, `pdfplumber` table extraction, `python-docx` parser, chunker with table preservation. |
+| **3. Vector Indexing & Hybrid Retrieval** | 2.0 Hours | Pinecone serverless integration, BM25 indexing, Reciprocal Rank Fusion, Cross-Encoder re-ranking, query expansion. |
+| **4. Generation, Evidence Gate & Comparison** | 1.5 Hours | Groq Llama 3.3 integration, heuristic evidence gate, source citation formatter, yellow passage preview, multi-document comparison mode. |
+| **5. Reliability, Security & Testing** | 1.0 Hours | Error handling pass, environment variable validation, 30 automated reliability tests in `scratch/test_reliability.py`. |
+| **6. Documentation & Walkthrough** | 1.0 Hours | Comprehensive `README.md` authoring, Mermaid data flow diagrams, setup documentation. |
 | **Total** | **8.0 Hours** | Complete implementation, testing, and submission-ready documentation. |
-
----
-
-## 24. 🔮 Future Improvements
-
-1. **PostgreSQL pgvector / Full-Text Search**: Move BM25 and vector retrieval directly into Supabase using `pgvector` and PostgreSQL `tsvector` for unified database-level hybrid search.
-2. **Multimodal Visual RAG**: Integrate vision models (e.g., Llama 3.2 Vision / GPT-4o) to interpret charts, architecture diagrams, and infographics embedded within PDFs.
-3. **Streaming Responses**: Stream LLM output directly to the UI token-by-token for lower perceived latency.
-4. **Calibrated Confidence Scoring**: Implement conformal prediction or calibrated confidence intervals for the evidence gate.
-5. **PDF Visual Bounding Box Highlighting**: Display direct PDF canvas overlays with bounding box rectangles over cited passages.
