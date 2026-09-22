@@ -71,90 +71,103 @@ The application is structured as an interactive Streamlit web interface backed b
 
 > 📖 **Full Specification**: For detailed architectural subsystem analysis and component-to-file mappings, see [`docs/architecture.md`](file:///c:/Users/heman/OneDrive/Desktop/rag%20assistant/SMART-PDF-RAG-ASSISTANT/docs/architecture.md).
 
+```
+Document Upload (PDF / DOCX / TXT)
+  ↓
+File Validation / MD5 Duplicate Detection
+  ↓
+Adaptive Extraction (PyMuPDF / EasyOCR / pdfplumber / python-docx)
+  ↓
+Document Summary & Key Topic Extraction (Groq LLM)
+  ↓
+Recursive Chunking (500 chars, 100 overlap, tables preserved)
+  ↓
+Dual Indexing: Dense Vectors (Pinecone) + Sparse Tokens (BM25) + Relational (Supabase)
+  ↓
+User Query / Comparison Request (Optional Groq Query Expansion)
+  ↓
+Hybrid Retrieval (Parallel Dense Cosine + Sparse BM25)
+  ↓
+Reciprocal Rank Fusion (RRF k=60)
+  ↓
+Cross-Encoder Re-Ranking (ms-marco-MiniLM-L-6-v2)
+  ↓
+Trigram Deduplication (Drop >= 85% overlap)
+  ↓
+Evidence / Answerability Gate
+  ├── 🟢 Strong / 🟡 Moderate → Groq LLM (Llama 3.3 70B) → Answer + Citations
+  └── 🔴 Insufficient Evidence → Controlled Refusal (No Hallucination)
+  ↓
+Streamlit UI Display + Source Inspector (Yellow Highlight on Full Page)
+```
+
 ```mermaid
 flowchart TD
-    User([👤 User / Client]) --> UI[🖥️ Streamlit Web Interface]
-
-    %% INGESTION FLOW
-    subgraph IngestionFlow ["📥 Ingestion & Document Processing Flow"]
-        UI -->|Upload PDF / DOCX / TXT| FileVal[🔍 File Validation & MD5 Duplicate Check]
-        FileVal --> FormatRouter{Format?}
-        
-        FormatRouter -->|PDF| ParserPDF[PyMuPDF Native Text Parser]
-        FormatRouter -->|DOCX| ParserDOCX[python-docx Parser]
-        FormatRouter -->|TXT| ParserTXT[Python Text Reader]
-        
-        ParserPDF --> ScannedCheck{Native Text < 20 chars?}
-        ScannedCheck -->|Yes: Scanned PDF| EasyOCR[EasyOCR 150 DPI Fallback]
-        ScannedCheck -->|No| TableExtract[pdfplumber Table Extractor]
-        EasyOCR --> TableExtract
-        
-        TableExtract --> DocSummary[Groq LLM: Auto-Summary & Key Topics JSON]
-        ParserDOCX --> DocSummary
-        ParserTXT --> DocSummary
-        
-        DocSummary --> Chunking[Recursive Character Splitter\nchunk_size=500, overlap=100\nPreserves Tables Intact]
-        Chunking --> EmbeddingEngine[SentenceTransformer\nall-MiniLM-L6-v2 384-dim]
+    %% ─────────────────────────────────────────────────────────────
+    %% STAGE 1: INGESTION & EXTRACTION
+    %% ─────────────────────────────────────────────────────────────
+    subgraph STAGE1 ["1. Document Ingestion & Extraction"]
+        direction TB
+        A1["📄 User Uploads PDF / DOCX / TXT"] --> A2["🔍 Validation & MD5 Duplicate Check"]
+        A2 --> A3["⚙️ Text & Table Extraction\n• PyMuPDF (Native text)\n• EasyOCR (Scanned fallback)\n• pdfplumber (Tables to Markdown)\n• python-docx (Word documents)"]
+        A3 --> A4["🧠 Groq LLM: Auto-Summary & Key Topics JSON"]
     end
 
-    %% PERSISTENCE LAYER
-    subgraph PersistenceLayer ["💾 Persistence Layer"]
-        DocSummary -->|Save doc metadata| DB_Docs[(Supabase: documents table)]
-        Chunking -->|Save text & table chunks| DB_Chunks[(Supabase: chunks table)]
-        EmbeddingEngine -->|Upsert 384-dim vectors + metadata| PineconeDB[(Pinecone Serverless: Vector Index)]
-        DB_Chunks -.->|Load corpus chunks| BM25Index[In-Memory BM25Okapi Index]
-        ChatHistoryStore[(Supabase: chat_history table)]
+    %% ─────────────────────────────────────────────────────────────
+    %% STAGE 2: CHUNKING & DUAL STORAGE
+    %% ─────────────────────────────────────────────────────────────
+    subgraph STAGE2 ["2. Chunking & Dual Storage Indexing"]
+        direction TB
+        B1["✂️ Recursive Text Chunker\n(500 chars, 100 overlap, tables kept intact)"]
+        B1 --> B2["🔢 Dense Embeddings\n(all-MiniLM-L6-v2, 384-dim)"]
+        B1 --> B3[("🗄️ Supabase PostgreSQL\n(documents & chunks tables)")]
+        B2 --> B4[("🌲 Pinecone Vector Index\n(serverless cosine search)")]
+        B3 --> B5["📚 In-Memory BM25Okapi Index\n(tokenized chunk corpus)"]
     end
 
-    %% RETRIEVAL FLOW
-    subgraph RetrievalFlow ["🔍 Query & Hybrid Retrieval Flow"]
-        UI -->|Question / Comparison| ScopeFilter{Document Scope Filter}
-        ScopeFilter --> QueryExpCheck{Query Expansion\nEnabled?}
-        
-        QueryExpCheck -->|Yes| Expander[Groq LLM: 2 Query Variants]
-        QueryExpCheck -->|No| SingleQuery[Original Query]
-        Expander --> SearchEngine
-        SingleQuery --> SearchEngine
-
-        subgraph SearchEngine ["Parallel Hybrid Search Execution"]
-            DenseSearch[Dense Search: Embed Query → Pinecone Cosine Search]
-            SparseSearch[Sparse Search: BM25 Token Search]
-        end
-
-        SearchEngine --> RRFFusion[Reciprocal Rank Fusion RRF\nRRF score = sum 1 / rank + 60]
-        
-        RRFFusion --> RerankCheck{Re-ranking\nEnabled?}
-        RerankCheck -->|Yes| CrossEncoder[Cross-Encoder ms-marco-MiniLM\nScore Query-Chunk Pairs]
-        RerankCheck -->|No| TopRRF[Top Candidates by RRF Score]
-        
-        CrossEncoder --> DedupCheck{Deduplication\nEnabled?}
-        TopRRF --> DedupCheck
-        
-        DedupCheck -->|Yes| TrigramDedup[Jaccard Trigram Deduplication\nDrop >= 85% Overlap]
-        DedupCheck -->|No| FinalCandidates[Final Top Chunks]
-        TrigramDedup --> FinalCandidates
+    %% ─────────────────────────────────────────────────────────────
+    %% STAGE 3: QUERY & HYBRID RETRIEVAL
+    %% ─────────────────────────────────────────────────────────────
+    subgraph STAGE3 ["3. Query & Hybrid Retrieval Pipeline"]
+        direction TB
+        C1["👤 User Query / Multi-Doc Comparison"] --> C2["🔄 Query Expansion\n(Optional Groq 2-variant generator)"]
+        C2 --> C3["🌲 Dense Vector Search (Pinecone)"]
+        C2 --> C4["📚 Sparse Keyword Search (BM25)"]
+        C3 --> C5["🔀 Reciprocal Rank Fusion (RRF k=60)"]
+        C4 --> C5
+        C5 --> C6["🎯 Cross-Encoder Re-Ranking\n(ms-marco-MiniLM on top-20)"]
+        C6 --> C7["🧹 Trigram Jaccard Deduplication\n(Drop >= 85% overlap)"]
     end
 
-    %% GENERATION & EVIDENCE GATE
-    subgraph GenerationFlow ["🛡️ Generation & Evidence Gate Flow"]
-        FinalCandidates --> EvidenceGate{Evidence Gate\nCheck Similarity / Logit Thresholds}
-        
-        EvidenceGate -->|Score < Threshold OR Empty Chunks| ControlledRefusal["🔴 Evidence: Insufficient\nControlled Refusal: No Hallucination"]
-        
-        EvidenceGate -->|Score >= Threshold| ContextAssembly["Context Block Assembly\n[Context Block N | Doc, Page]"]
-        
-        ContextAssembly --> MemoryInject[Inject Last 6 Conversation Turns]
-        MemoryInject --> GroqLLM[Groq LLM: Llama 3.3 70B Versatile]
-        
-        GroqLLM --> CitationAppender[Append Evidence Badge & Sources]
+    %% ─────────────────────────────────────────────────────────────
+    %% STAGE 4: EVIDENCE GATE & GENERATION
+    %% ─────────────────────────────────────────────────────────────
+    subgraph STAGE4 ["4. Evidence Gating & LLM Generation"]
+        direction TB
+        D1{"🛡️ Evidence / Answerability Gate\n(Relevance & Coverage Score)"}
+        D1 -->|"🟢 Strong / 🟡 Moderate"| D2["🤖 Groq LLM: Llama 3.3 70B\n(Context blocks + 6-turn sliding memory)"]
+        D1 -->|"🔴 Insufficient Evidence"| D3["🛑 Controlled Refusal\n(Safely decline without hallucinating)"]
+        D2 --> D4["📋 Format Grounded Response\n(Answer / Table + [Doc, Page] Citations)"]
     end
 
-    %% OUTPUT & ATTRIBUTION
-    ControlledRefusal --> UI
-    CitationAppender -->|Persist chat turn| ChatHistoryStore
-    CitationAppender --> UI
-    UI -->|Source Preview| HighlightViewer["Inspector: Source Preview\nReconstruct Page + Yellow Highlighting"]
-    DB_Chunks -.->|Fetch full page chunks| HighlightViewer
+    %% ─────────────────────────────────────────────────────────────
+    %% STAGE 5: UI DISPLAY & ATTRIBUTION
+    %% ─────────────────────────────────────────────────────────────
+    subgraph STAGE5 ["5. UI Display & Source Attribution"]
+        direction TB
+        E1["🖥️ Streamlit Interactive UI"]
+        E1 --> E2["🔍 Source Inspector Panel\n(Full-page text + Yellow passage highlight)"]
+        E1 --> E3[("🗄️ Supabase chat_history")]
+    end
+
+    %% ─────────────────────────────────────────────────────────────
+    %% ORDERED PIPELINE FLOW
+    %% ─────────────────────────────────────────────────────────────
+    A4 --> B1
+    STAGE2 --> C1
+    C7 --> D1
+    D4 --> E1
+    D3 --> E1
 ```
 
 ---
@@ -496,11 +509,11 @@ Pre-packaged sample evaluation documents and test instructions are available in 
 
 In compliance with assessment transparency guidelines, the following AI tools assisted during development:
 
-- **Claude / Gemini / ChatGPT**:
+- **Claude &ChatGPT**:
   - Architecture design for the multi-stage hybrid RRF pipeline and cross-encoder re-ranking.
   - Drafting test assertions in `scratch/` for parser edge cases, chunk boundary testing, and schema migrations.
   - Formulating system prompts for strict document grounding and JSON-mode summary extraction.
-- **GitHub Copilot / Antigravity IDE**:
+- **Antigravity IDE**:
   - Code completion for Streamlit layout components, PyMuPDF extraction routines, and Supabase client calls.
 
 ---
