@@ -10,7 +10,11 @@ Usage:
     response = client.table("documents").select("*").execute()
 """
 
-from supabase import create_client, Client
+try:
+    from supabase import create_client, Client
+except ImportError:
+    create_client = None
+    Client = None
 from utils.config import SUPABASE_URL, SUPABASE_KEY
 from utils.helpers import get_logger
 

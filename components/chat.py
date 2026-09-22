@@ -15,6 +15,57 @@ SUGGESTED_QUESTIONS = [
 ]
 
 
+def get_dynamic_query_suggestions(all_docs: list = None) -> list:
+    """
+    Generates context-aware query suggestions based on indexed document metadata
+    (summary, key topics, content category) while preserving baseline suggestions.
+    """
+    baseline = list(SUGGESTED_QUESTIONS)
+    if not all_docs:
+        return baseline
+
+    combined_text = " ".join([
+        f"{d.get('summary', '')} {d.get('key_topics', '')}".lower()
+        for d in all_docs
+    ])
+
+    topic_suggestions = []
+
+    # HR / Policy / Employee topic detection
+    if any(k in combined_text for k in ["leave", "policy", "employee", "hr", "benefit", "handbook", "salary", "work"]):
+        topic_suggestions.extend([
+            "🌴 What is the leave policy?",
+            "🎁 What benefits are available?",
+            "👥 What are employee responsibilities?",
+        ])
+
+    # Finance / Business / Revenue / Funding topic detection
+    if any(k in combined_text for k in ["financial", "revenue", "funding", "investment", "risk", "profit", "contract", "partnership", "corp"]):
+        topic_suggestions.extend([
+            "💰 What was the revenue or funding?",
+            "⚠️ What risks or agreements are mentioned?",
+            "📈 What are the major financial highlights?",
+        ])
+
+    # Topic-specific chips from key_topics
+    for doc in all_docs:
+        topics_str = doc.get("key_topics", "")
+        if topics_str:
+            for top in [t.strip() for t in topics_str.split(",") if t.strip()]:
+                if len(top) > 2 and top.lower() not in ["demo", "document", "error", "metadata", "general"]:
+                    sug = f"📌 Details on {top}"
+                    if sug not in topic_suggestions:
+                        topic_suggestions.append(sug)
+
+    # Combine baseline + topic suggestions without duplicates
+    all_suggestions = []
+    for sug in baseline + topic_suggestions:
+        if sug not in all_suggestions:
+            all_suggestions.append(sug)
+
+    return all_suggestions[:6]
+
+
 @st.cache_resource
 def get_rag_pipeline():
     """Caches RAG pipeline connections to keep model loads and client connections in memory."""
@@ -32,16 +83,33 @@ def get_rag_pipeline():
     return retriever, llm
 
 
-def _render_suggested_questions() -> str | None:
+def _render_suggested_questions(all_docs: list = None) -> str | None:
     """
     Renders clickable suggestion chips below the welcome message.
     Returns the selected question text if a chip was clicked, else None.
     """
-    cols = st.columns(len(SUGGESTED_QUESTIONS))
-    for col, suggestion in zip(cols, SUGGESTED_QUESTIONS):
-        with col:
-            if st.button(suggestion, use_container_width=True, key=f"suggest_{suggestion}"):
-                return suggestion.split(" ", 1)[1]   # strip the leading emoji
+    suggestions = get_dynamic_query_suggestions(all_docs or [])
+    
+    # Render chips in balanced columns
+    row1 = suggestions[:3]
+    row2 = suggestions[3:6]
+    
+    if row1:
+        cols1 = st.columns(len(row1))
+        for col, suggestion in zip(cols1, row1):
+            with col:
+                if st.button(suggestion, use_container_width=True, key=f"suggest_{suggestion}"):
+                    parts = suggestion.split(" ", 1)
+                    return parts[1] if len(parts) > 1 else suggestion
+                    
+    if row2:
+        cols2 = st.columns(len(row2))
+        for col, suggestion in zip(cols2, row2):
+            with col:
+                if st.button(suggestion, use_container_width=True, key=f"suggest_{suggestion}"):
+                    parts = suggestion.split(" ", 1)
+                    return parts[1] if len(parts) > 1 else suggestion
+                    
     return None
 
 
@@ -55,6 +123,14 @@ def render_chat_interface() -> None:
             "⚠️ **API keys missing** — running in Demo Mode. "
             "Set `GROQ_API_KEY` and `PINECONE_API_KEY` in `.env` to enable live responses."
         )
+
+    # ── Fetch documents for smart filter and dynamic suggestions ─────────────
+    try:
+        all_docs = fetch_all_documents()
+        doc_names = [d["document_name"] for d in all_docs]
+    except Exception:
+        all_docs = []
+        doc_names = []
 
     # ── Load full chat history from SQLite for display ───────────────────────
     try:
@@ -75,7 +151,7 @@ def render_chat_interface() -> None:
 
         # Show suggestion chips only when there's no history yet
         if not history:
-            clicked = _render_suggested_questions()
+            clicked = _render_suggested_questions(all_docs)
             if clicked:
                 st.session_state["prefill_query"] = clicked
                 st.rerun()

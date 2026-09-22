@@ -65,6 +65,17 @@ with col2:
             selected_doc = next((d for d in docs if d["document_name"] == selected_doc_name), None)
             
             if selected_doc:
+                # Document Card Action Buttons: [Ask This Document] and [View Summary]
+                action_col1, action_col2 = st.columns(2)
+                with action_col1:
+                    if st.button("📌 Ask This Document", use_container_width=True, key=f"ask_doc_{selected_doc_name}"):
+                        st.session_state["scoped_document"] = selected_doc_name
+                        st.session_state["doc_filter_multiselect"] = [selected_doc_name]
+                        st.success(f"Retrieval scope set to '{selected_doc_name}'. Go to 💬 Chat Interface tab!")
+                with action_col2:
+                    if st.button("📋 View Summary", use_container_width=True, key=f"view_sum_{selected_doc_name}"):
+                        st.session_state["view_summary_target"] = selected_doc_name
+
                 # Show summary
                 st.markdown(f"#### 📄 Summary")
                 st.info(selected_doc.get("summary") or "No summary available.")
