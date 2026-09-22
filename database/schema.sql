@@ -44,10 +44,21 @@ CREATE TABLE IF NOT EXISTS chat_history (
 CREATE INDEX IF NOT EXISTS idx_chat_history_timestamp
     ON chat_history (timestamp ASC);
 
--- Row Level Security
--- Disable RLS on all tables so the anon key can perform full
--- CRUD operations. This app uses the anon key server-side only
--- (Streamlit backend), so this is safe for this architecture.
-ALTER TABLE documents    DISABLE ROW LEVEL SECURITY;
-ALTER TABLE chunks       DISABLE ROW LEVEL SECURITY;
-ALTER TABLE chat_history DISABLE ROW LEVEL SECURITY;
+-- Row Level Security & Access Policies
+-- Enable RLS with permissive policies and grants so the anon key can perform full CRUD operations.
+GRANT ALL ON TABLE documents TO anon, authenticated, service_role;
+GRANT ALL ON TABLE chunks TO anon, authenticated, service_role;
+GRANT ALL ON TABLE chat_history TO anon, authenticated, service_role;
+
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enable all operations for documents" ON documents;
+CREATE POLICY "Enable all operations for documents" ON documents FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Enable all operations for chunks" ON chunks;
+CREATE POLICY "Enable all operations for chunks" ON chunks FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Enable all operations for chat_history" ON chat_history;
+CREATE POLICY "Enable all operations for chat_history" ON chat_history FOR ALL USING (true) WITH CHECK (true);
