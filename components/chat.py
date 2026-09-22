@@ -100,8 +100,10 @@ def render_chat_interface() -> None:
             options=doc_names,
             default=[],
             key="doc_filter_multiselect",
-            help="Restrict retrieval to one or more specific documents. Leave empty to query across all indexed documents.",
+            help="Select 2 or more documents to compare their contents directly. Leave empty to query across all indexed documents.",
         )
+        if len(selected_docs) >= 2:
+            st.caption(f"📊 **Document Comparison Mode Active** — comparing `{len(selected_docs)}` documents: **{', '.join(selected_docs)}**")
     else:
         selected_docs = []
 
@@ -133,6 +135,7 @@ def render_chat_interface() -> None:
             use_query_expansion = st.session_state.get("use_query_expansion", False)
             use_deduplication = st.session_state.get("use_deduplication", False)
             doc_filter = selected_docs if selected_docs else None
+            is_comp = len(selected_docs) >= 2
 
             with st.spinner(""):
                 # Step 1 — Retrieve relevant chunks
@@ -145,12 +148,32 @@ def render_chat_interface() -> None:
                     document_filter=doc_filter,
                 )
 
-                # Step 2 — Generate conversational response with history
-                answer = llm.generate_response(
-                    user_question=user_query,
-                    retrieved_chunks=retrieved_chunks,
-                    conversation_history=recent_history,
+                # Step 2 — Evidence Gate Evaluation
+                from services.evidence_gate import EvidenceGate
+                evidence_eval = EvidenceGate.evaluate(
+                    user_query,
+                    retrieved_chunks,
+                    use_reranker=use_reranker,
                 )
+                st.session_state["evidence_eval"] = evidence_eval
+
+                if not evidence_eval["is_sufficient"]:
+                    # Evidence is insufficient: BYPASS LLM completely!
+                    logger.info(f"Evidence Gate blocked LLM call for query: '{user_query}'")
+                    answer = (
+                        "**🔴 Evidence: Insufficient**\n\n"
+                        "I couldn't find enough relevant information in the uploaded documents to answer this reliably."
+                    )
+                    retrieved_chunks = []
+                else:
+                    # Evidence is sufficient (Strong or Moderate): Generate LLM response
+                    answer = llm.generate_response(
+                        user_question=user_query,
+                        retrieved_chunks=retrieved_chunks,
+                        conversation_history=recent_history,
+                        evidence_level=evidence_eval.get("level", "Strong Evidence"),
+                        is_comparison=is_comp,
+                    )
 
         except Exception as e:
             logger.error(f"RAG execution failure: {e}")
@@ -170,6 +193,12 @@ def render_chat_interface() -> None:
                 "chunk_type": "text",
             }
         ]
+        st.session_state["retrieval_stats"] = {
+            "dense_count": 1,
+            "sparse_count": 1,
+            "fused_count": 1,
+            "queries_used": 1,
+        }
         from services.llm import generate_citations_block
         mock_answer = (
             "Sure! In Demo Mode, I'm simulating a response based on your uploaded documents. "
@@ -189,6 +218,8 @@ def render_chat_interface() -> None:
         if retrieved_chunks:
             with st.expander("📎 View source chunks", expanded=False):
                 stats = st.session_state.get("retrieval_stats")
+                ev_eval = st.session_state.get("evidence_eval")
+                ev_label = f" | Evidence Level: **{ev_eval['level']}**" if ev_eval and "level" in ev_eval else ""
                 if stats:
                     queries_used = stats.get("queries_used", 1)
                     expansion_label = f" · Queries: **{queries_used}**" if queries_used > 1 else ""
@@ -197,6 +228,7 @@ def render_chat_interface() -> None:
                         f"BM25 Sparse: **{stats['sparse_count']}** | "
                         f"RRF Fused: **{stats['fused_count']}**"
                         f"{expansion_label}"
+                        f"{ev_label}"
                     )
                     st.markdown("---")
 

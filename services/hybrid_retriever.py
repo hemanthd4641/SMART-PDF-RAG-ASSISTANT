@@ -29,13 +29,17 @@ def reciprocal_rank_fusion(
     # 1. Process dense vector results (ranked order is preserved by index in list)
     for rank, chunk in enumerate(dense_results):
         chunk_id = chunk["chunk_id"]
-        chunk_mapping[chunk_id] = chunk
+        if chunk_id not in chunk_mapping:
+            chunk_mapping[chunk_id] = chunk.copy()
+        chunk_mapping[chunk_id]["dense_score"] = chunk.get("score", 0.0)
         rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + 1.0 / (rank + 1 + k)
         
     # 2. Process sparse keyword results (ranked order is preserved by index in list)
     for rank, chunk in enumerate(sparse_results):
         chunk_id = chunk["chunk_id"]
-        chunk_mapping[chunk_id] = chunk
+        if chunk_id not in chunk_mapping:
+            chunk_mapping[chunk_id] = chunk.copy()
+        chunk_mapping[chunk_id]["sparse_score"] = chunk.get("score", 0.0)
         rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + 1.0 / (rank + 1 + k)
         
     # If no results returned from either retriever, return empty list

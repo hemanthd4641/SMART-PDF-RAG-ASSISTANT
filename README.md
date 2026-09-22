@@ -452,3 +452,63 @@ flowchart TD
 - Streaming LLM response output
 - Chat export to PDF / Markdown
 - Analytics dashboard (query history, chunk hit rates, document usage)
+
+---
+
+## 🛡️ Hallucination Mitigation Strategy
+
+Preventing LLM hallucinations is a core technical requirement of this Smart Document Assistant. The application employs a multi-layered defense strategy:
+
+1. **Strict System Prompting**:
+   - System prompts explicitly instruct Llama 3.3 to answer **ONLY** from the provided context blocks.
+   - Refusal policy: If the retrieved chunks do not contain sufficient evidence to answer a question, the model is directed to respond conversationally: *"I couldn't find that specific information in your uploaded documents. Could you clarify, or would you like me to look for something related?"*
+
+2. **Context Block Labeling**:
+   - Each retrieved chunk injected into the LLM prompt is clearly demarcated with explicit metadata labels (`[Context Block N | document_name, Page X]`), allowing the model to attribute information accurately.
+
+3. **Hybrid RRF + Re-Ranking Pipeline**:
+   - By combining dense vector similarity (Pinecone) with sparse keyword search (BM25) and Cross-Encoder re-ranking, the context retrieval precision is maximized, ensuring only relevant passages reach the LLM prompt window.
+
+4. **Chunk Deduplication**:
+   - Near-duplicate chunks are removed via Jaccard n-gram similarity before context assembly, preventing redundant text from overwhelming the context window.
+
+---
+
+## 🤖 AI Tools Used
+
+In accordance with Section 8 of the assessment guidelines, GenAI tools were utilized during the development of this project:
+
+- **ChatGPT / Gemini / Claude**:
+  - Assisted in designing the multi-stage retrieval architecture (Hybrid RRF fusion formulas and Cross-Encoder re-ranking pipelines).
+  - Generated unit test suites in `scratch/` to verify database schema migrations, chunkers, and parsers.
+  - Formulated system prompts for strict document grounding and JSON-mode summary extraction.
+- **GitHub Copilot / Antigravity IDE**:
+  - Provided real-time code completion for boilerplate Streamlit UI components, Supabase PostgREST queries, and PyMuPDF text extraction loops.
+
+---
+
+## ⏱️ 8-Hour Time Log & Allocation
+
+| Phase | Estimated Time | Tasks Completed |
+|---|---|---|
+| **Problem Understanding & Architecture Design** | 0.5 Hours | Analyzed candidate requirements, outlined hybrid RRF pipeline, selected tech stack (Streamlit, Groq, Pinecone, Supabase). |
+| **Core Development** | 5.0 Hours | Implemented document parsers (PDF/TXT/DOCX), EasyOCR fallback, table extractor, Pinecone vector store, BM25 retriever, RRF merger, Groq LLM integration, and Supabase cloud persistence. |
+| **Testing & Debugging** | 1.5 Hours | Built and executed 19 verification test scripts in `scratch/`, refined multi-document filtering, verified demo mode, and verified cascade document deletions. |
+| **Documentation & Demo Video** | 1.0 Hours | Authored detailed `README.md`, generated Mermaid dataflow diagrams, compiled time log notes, and prepared demo script. |
+| **Total** | **8.0 Hours** | Delivered fully functional application and submission package. |
+
+---
+
+## 📦 Submission Package Checklist
+
+- [x] **Source Code**: Full Python codebase structured under `components/`, `services/`, `database/`, `utils/`.
+- [x] **README.md**: Setup instructions, architecture diagrams, technology rationale, AI tools declaration, hallucination strategy, and time log.
+- [x] **Architecture Diagram**: Mermaid workflow diagrams embedded in `README.md`.
+- [x] **Sample Documents**: Pre-packaged test documents located in `data/` (`test_company.pdf`).
+- [x] **Demo Video Script (5–8 minutes)**:
+  - *Min 0–1*: Introduction to problem, technical goals, and RAG architecture.
+  - *Min 1–3*: Live Demo — Upload PDF/DOCX, ask factual questions, inspect source citations & yellow page preview highlights.
+  - *Min 3–4*: Demo hallucination handling with unanswerable questions & test Smart Document Filter.
+  - *Min 4–6*: Architectural walkthrough — hybrid RRF search, query expansion, cross-encoder reranking, and Supabase database.
+  - *Min 6–8*: Creative feature review & future enhancements.
+

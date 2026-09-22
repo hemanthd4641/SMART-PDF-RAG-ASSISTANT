@@ -5,19 +5,29 @@ from utils.helpers import get_logger
 
 logger = get_logger("llm")
 
-def generate_citations_block(retrieved_chunks: List[Dict[str, Any]]) -> str:
+def generate_citations_block(
+    retrieved_chunks: List[Dict[str, Any]],
+    evidence_level: str = "Strong Evidence",
+) -> str:
     """
-    Generates a rich, deduplicated citation block with document name and page number.
-    Citations are rendered as styled markdown badges for visual clarity.
+    Generates a rich, deduplicated citation block with Evidence Indicator and page-level sources.
 
     Args:
         retrieved_chunks: List of context chunks with document_name and page_number.
+        evidence_level:   Evidence level category ("Strong Evidence", "Moderate Evidence", "Insufficient Evidence").
 
     Returns:
         Formatted citation block as a markdown string.
     """
+    badge_map = {
+        "Strong Evidence": "🟢 Evidence: Strong",
+        "Moderate Evidence": "🟡 Evidence: Moderate",
+        "Insufficient Evidence": "🔴 Evidence: Insufficient",
+    }
+    evidence_badge = badge_map.get(evidence_level, f"🟢 Evidence: {evidence_level}")
+
     if not retrieved_chunks:
-        return ""
+        return f"---\n**{evidence_badge}**"
 
     seen = set()
     ordered_citations = []
@@ -31,12 +41,11 @@ def generate_citations_block(retrieved_chunks: List[Dict[str, Any]]) -> str:
             seen.add(citation)
             ordered_citations.append(citation)
 
-    if not ordered_citations:
-        return ""
-
-    lines = ["---", "📎 **Sources**", ""]
-    for i, (doc_name, page_num) in enumerate(ordered_citations, start=1):
-        lines.append(f"{i}. 📄 **{doc_name}** — Page `{page_num}`")
+    lines = ["---", f"**{evidence_badge}**", ""]
+    if ordered_citations:
+        lines.append("**Sources:**")
+        for doc_name, page_num in ordered_citations:
+            lines.append(f"📄 **{doc_name}** — Page `{page_num}`")
 
     return "\n".join(lines)
 
@@ -71,27 +80,38 @@ class LLMService:
         user_question: str,
         retrieved_chunks: List[Dict[str, Any]],
         conversation_history: List[Dict[str, str]] = None,
+        evidence_level: str = "Strong Evidence",
+        is_comparison: bool = False,
     ) -> str:
         """
         Generates a conversational response grounded on retrieved document context.
 
-        Supports multi-turn dialogue by injecting recent conversation history as
-        real Groq message turns so the model can reference prior exchanges naturally.
+        Supports multi-turn dialogue and structured document comparison tables.
 
         Args:
             user_question:        The user's current message.
             retrieved_chunks:     List of retrieved context chunks from the RAG pipeline.
-            conversation_history: Optional list of recent turns:
-                                  [{"user_question": "...", "assistant_answer": "..."}]
+            conversation_history: Optional list of recent turns.
+            evidence_level:       Evidence evaluation category from EvidenceGate.
+            is_comparison:        If True, enforces Markdown Comparison Table structure.
 
         Returns:
-            Generated conversational response with source citations appended
-            (or a polite refusal if the answer cannot be found in the documents).
+            Generated conversational response with evidence indicator and source citations appended.
         """
         self.connect()
-        logger.info(f"Generating conversational response for: '{user_question}'")
+        logger.info(f"Generating conversational response for: '{user_question}' (is_comparison={is_comparison})")
 
         has_context = bool(retrieved_chunks)
+
+        # Detect comparison mode automatically if chunks originate from multiple docs or query asks for comparison
+        doc_names_in_chunks = {c.get("document_name") for c in retrieved_chunks if c.get("document_name")}
+        query_lower = user_question.lower()
+        comparison_keywords = ["compare", "comparison", "versus", "vs ", "difference", "differ", "contrast"]
+        should_format_comparison = (
+            is_comparison 
+            or (len(doc_names_in_chunks) >= 2 and any(k in query_lower for k in comparison_keywords))
+            or (is_comparison and len(doc_names_in_chunks) >= 2)
+        )
 
         # ── System prompt: conversational + document-grounded ──────────────────
         system_prompt = (
@@ -115,7 +135,21 @@ class LLMService:
             "5. Use markdown: **bold** key terms, - bullet lists, numbered steps where order matters.\n"
             "6. Synthesize information from multiple context blocks into one cohesive answer.\n"
             "7. NEVER truncate — if there are 10 items, list all 10.\n\n"
+        )
 
+        if should_format_comparison:
+            system_prompt += (
+                "DOCUMENT COMPARISON INSTRUCTIONS:\n"
+                "The user is requesting a comparison across documents. You MUST structure your answer with a clear Markdown Comparison Table:\n"
+                "| Topic / Feature | [Document A Name] | [Document B Name] |\n"
+                "|---|---|---|\n"
+                "| [Topic 1] | [Details from Document A] | [Details from Document B] |\n"
+                "| [Topic 2] | [Details from Document A] | [Details from Document B] |\n\n"
+                "Follow the Markdown table with a brief section explaining the main differences.\n"
+                "Ground every single cell strictly on the provided context. If a detail is missing in a document, write 'Not specified'.\n\n"
+            )
+
+        system_prompt += (
             "WHEN INFORMATION IS NOT IN DOCUMENTS:\n"
             "- If the user asks something not found in the documents, respond conversationally: "
             "'I couldn't find that specific information in your uploaded documents. "
@@ -173,7 +207,7 @@ class LLMService:
 
             # Append citations only when real document chunks were used
             if has_context:
-                citations_block = generate_citations_block(retrieved_chunks)
+                citations_block = generate_citations_block(retrieved_chunks, evidence_level=evidence_level)
                 if citations_block:
                     return f"{completion_text}\n\n{citations_block}"
 

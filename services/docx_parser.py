@@ -77,6 +77,7 @@ def extract_docx_text(file_path: str) -> Dict[str, Any]:
         )
 
     text_parts = []
+    tables_list = []
 
     # 1. Extract paragraph text in document order
     for para in doc.paragraphs:
@@ -84,18 +85,24 @@ def extract_docx_text(file_path: str) -> Dict[str, Any]:
         if stripped:
             text_parts.append(stripped)
 
-    # 2. Extract table cell content in row-major order
+    # 2. Extract tables into row-major text parts AND Markdown table strings
+    from services.parser import table_to_markdown
     for table in doc.tables:
+        raw_table = []
         for row in table.rows:
             row_cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
             if row_cells:
-                # Join cells with a tab separator to preserve tabular context
                 text_parts.append("\t".join(row_cells))
+                raw_table.append([cell.text.strip() for cell in row.cells])
+        if raw_table:
+            md_table = table_to_markdown(raw_table)
+            if md_table:
+                tables_list.append(md_table)
 
     full_text = "\n".join(text_parts).strip()
 
-    # Guard: document must contain at least some text
-    if not full_text:
+    # Guard: document must contain at least some text or tables
+    if not full_text and not tables_list:
         raise DocxParsingError(
             f"No text found in document '{document_name}'. "
             f"The file may be empty or contain only images/non-text elements."
@@ -103,8 +110,8 @@ def extract_docx_text(file_path: str) -> Dict[str, Any]:
 
     logger.info(
         f"DOCX '{document_name}' parsed successfully: "
-        f"{len(doc.paragraphs)} paragraphs, {len(doc.tables)} tables, "
-        f"{len(full_text)} characters extracted."
+        f"{len(doc.paragraphs)} paragraphs, {len(tables_list)} tables, "
+        f"{len(full_text)} narrative characters extracted."
     )
 
     return {
@@ -113,8 +120,9 @@ def extract_docx_text(file_path: str) -> Dict[str, Any]:
             {
                 "page_number": 1,
                 "text": full_text,
-                "tables": [],          # Tables already merged into text above
+                "tables": tables_list,
                 "extraction_method": "native"
             }
         ]
     }
+

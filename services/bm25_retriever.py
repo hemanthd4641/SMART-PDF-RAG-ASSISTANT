@@ -6,16 +6,36 @@ from utils.helpers import get_logger
 
 logger = get_logger("bm25")
 
+def _normalize_word(word: str) -> str:
+    """Applies lightweight suffix normalization for common plurals/verb forms."""
+    if len(word) > 4:
+        if word.endswith("ing"):
+            return word[:-3]
+        elif word.endswith("ies") and len(word) > 4:
+            return word[:-3] + "y"
+        elif word.endswith("es"):
+            return word[:-2]
+        elif word.endswith("s") and not word.endswith("ss"):
+            return word[:-1]
+        elif word.endswith("ed"):
+            return word[:-2]
+    elif len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
 def tokenize(text: str) -> List[str]:
-    """Tokenize and clean text for BM25 indexing by converting to lowercase and removing punctuation."""
+    """Tokenize, clean, and normalize text for BM25 indexing by converting to lowercase, removing punctuation, and applying stemming."""
     if not text:
         return []
     # Convert to lowercase
     text = text.lower()
     # Remove punctuation
     text = text.translate(str.maketrans("", "", string.punctuation))
-    # Split by whitespace
-    return [word for word in text.split(" ") if word]
+    # Split by whitespace and normalize
+    raw_words = [word for word in text.split(" ") if word]
+    return [_normalize_word(w) for w in raw_words]
+
 
 class BM25Retriever:
     """Manages the BM25 keyword index over all chunks currently stored in SQLite database."""

@@ -385,9 +385,9 @@ def clear_chat_history() -> None:
     """
     try:
         client = get_client()
-        # Delete all rows with timestamp ≤ far future (effectively all rows)
-        client.table("chat_history").delete().lte(
-            "timestamp", "2999-12-31T23:59:59Z"
+        # Delete all rows satisfying non-matching dummy UUID filter
+        client.table("chat_history").delete().neq(
+            "id", "00000000-0000-0000-0000-000000000000"
         ).execute()
         logger.info("Chat history cleared from Supabase.")
     except Exception as e:

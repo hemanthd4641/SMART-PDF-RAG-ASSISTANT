@@ -231,8 +231,9 @@ def render_upload_section() -> None:
                 st.session_state["processed_file_hashes"].add(file_key)
                 continue
 
-            # Save to temp folder
-            save_path = os.path.join(TEMP_UPLOADS_DIR, file_name)
+            # Save to temp folder (with sanitized filename)
+            safe_basename = os.path.basename(file_name).replace("..", "").replace("/", "").replace("\\", "")
+            save_path = os.path.join(TEMP_UPLOADS_DIR, safe_basename)
             try:
                 with open(save_path, "wb") as f:
                     f.write(file.getbuffer())
