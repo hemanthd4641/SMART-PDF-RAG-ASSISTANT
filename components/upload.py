@@ -75,30 +75,43 @@ def _process_single_file(
             chunks = chunker.chunk_document(parsed_doc)
 
         # Step D: Save document metadata and chunks to Supabase
-        insert_document(
-            doc_id=doc_id,
-            document_name=file_name,
-            page_count=page_count,
-            summary=summary_info.get("summary"),
-            key_topics=summary_info.get("key_topics"),
-            native_page_count=native_page_count,
-            ocr_page_count=ocr_page_count,
-        )
+        try:
+            insert_document(
+                doc_id=doc_id,
+                document_name=file_name,
+                page_count=page_count,
+                summary=summary_info.get("summary"),
+                key_topics=summary_info.get("key_topics"),
+                native_page_count=native_page_count,
+                ocr_page_count=ocr_page_count,
+            )
 
-        num_text, num_table = 0, 0
-        db_chunks = []
-        for chunk in chunks:
-            c_type = chunk["chunk_type"]
-            num_text += c_type == "text"
-            num_table += c_type == "table"
-            db_chunks.append({
-                "chunk_id": chunk["chunk_id"],
-                "document_id": doc_id,
-                "page_number": chunk["page_number"],
-                "chunk_text": chunk["chunk_text"],
-                "chunk_type": c_type,
-            })
-        insert_chunks(db_chunks)
+            num_text, num_table = 0, 0
+            db_chunks = []
+            for chunk in chunks:
+                c_type = chunk["chunk_type"]
+                num_text += c_type == "text"
+                num_table += c_type == "table"
+                db_chunks.append({
+                    "chunk_id": chunk["chunk_id"],
+                    "document_id": doc_id,
+                    "page_number": chunk["page_number"],
+                    "chunk_text": chunk["chunk_text"],
+                    "chunk_type": c_type,
+                })
+            insert_chunks(db_chunks)
+        except Exception as db_err:
+            err_msg = str(db_err)
+            if "getaddrinfo" in err_msg or "ConnectError" in err_msg:
+                st.error(
+                    "❌ **Supabase Connection Failed**: The database host specified in `SUPABASE_URL` could not be resolved. "
+                    "Your free-tier Supabase project may be **paused** due to inactivity. "
+                    "Please visit your [Supabase Dashboard](https://supabase.com/dashboard) to unpause your project or update `SUPABASE_URL` in `.env`."
+                )
+            else:
+                st.error(f"❌ **Database Save Failed**: {db_err}")
+            logger.error(f"Supabase persistence error for '{file_name}': {db_err}")
+            return False
 
         # Step E: Embed + Pinecone
         if configured and embedding_service and pinecone_store:
